@@ -1,14 +1,24 @@
 import { Chess } from 'chess.js';
 import crypto from 'node:crypto';
 
-const games = new Map();
+export type GameMode = 'pvp' | 'pve';
 
-export function createGame({ fen, mode = 'pvp' } = {}) {
+export interface Game {
+  id: string;
+  mode: GameMode;
+  chess: Chess;
+  createdAt: string;
+  updatedAt: string;
+}
+
+const games = new Map<string, Game>();
+
+export function createGame({ fen, mode = 'pvp' }: { fen?: string; mode?: GameMode } = {}): Game {
   const chess = new Chess();
   if (fen) chess.load(fen);
 
   const id = crypto.randomUUID();
-  const game = {
+  const game: Game = {
     id,
     mode,
     chess,
@@ -20,11 +30,11 @@ export function createGame({ fen, mode = 'pvp' } = {}) {
   return game;
 }
 
-export function getGame(id) {
+export function getGame(id: string): Game | undefined {
   return games.get(id);
 }
 
-export function toState(game) {
+export function toState(game: Game) {
   const { chess, id, mode, createdAt, updatedAt } = game;
   return {
     id,
