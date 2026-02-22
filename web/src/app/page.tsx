@@ -1,6 +1,7 @@
 import { Shield, Clock3, KeyRound, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { Nav } from '@/components/nav'
 
 const features = [
   {
@@ -27,7 +28,9 @@ const features = [
 
 export default function HomePage() {
   return (
-    <main className="mx-auto max-w-6xl px-6 py-16">
+    <main>
+      <Nav />
+      <div className="mx-auto max-w-6xl px-6 py-16">
       <section className="mb-12 text-center">
         <p className="mb-3 inline-block rounded-full border border-border bg-muted px-3 py-1 text-xs text-muted-foreground">
           Chess API • NestJS + Postgres + Drizzle
@@ -55,6 +58,7 @@ export default function HomePage() {
           </Card>
         ))}
       </section>
+      </div>
     </main>
   )
 }
