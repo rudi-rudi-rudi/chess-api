@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { and, desc, eq } from 'drizzle-orm';
 import { DatabaseService } from '../../database/database.service.js';
-import { games } from '../../database/schema.js';
+import { games, users } from '../../database/schema.js';
 import { randomId } from '../../config/crypto.js';
 import { aiMove, createState, hydrate, legalMoves, move, present, resign, serialize, type Color, type GameMode } from './chess.engine.js';
 
@@ -32,6 +32,26 @@ export class ChessService {
       .from(games)
       .where(and(...conditions))
       .orderBy(desc(games.updatedAt))
+      .limit(limit)
+      .offset((page - 1) * limit);
+
+    return { page, limit, items: rows };
+  }
+
+  async listPlayers(userId: string, query: { page?: number; limit?: number }) {
+    const page = Math.max(1, Number(query.page ?? 1));
+    const limit = Math.min(100, Math.max(1, Number(query.limit ?? 20)));
+
+    const rows = await this.dbs.db
+      .select({
+        id: users.id,
+        name: users.name,
+        email: users.email,
+        picture: users.picture,
+        createdAt: users.createdAt,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
       .limit(limit)
       .offset((page - 1) * limit);
 

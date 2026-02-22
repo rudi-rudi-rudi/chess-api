@@ -32,7 +32,7 @@ Ship a production-ready SaaS chess API where users can sign in, create API keys,
 - [x] API key rate limit per key (not only global)
 - [ ] Pagination DTOs + list endpoints:
   - [x] `GET /games` with filters/status/mode
-  - [ ] `GET /players` (or profile-scoped player listing)
+  - [x] `GET /players` (or profile-scoped player listing)
 - [ ] Ownership checks on all mutable resources
 
 ### 3) Data model completion

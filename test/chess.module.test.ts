@@ -52,3 +52,13 @@ test('chess service list returns paginated items', async () => {
   assert.equal(out.limit, 20);
   assert.equal(out.items.length, 1);
 });
+
+test('chess service listPlayers returns profile-scoped player listing', async () => {
+  const row = { id: 'u1', name: 'User One', email: 'u1@example.com', picture: null, createdAt: new Date() };
+  const svc = new ChessService(makeDbMock(row) as any);
+  const out: any = await svc.listPlayers('u1', { page: 1, limit: 20 });
+  assert.equal(out.page, 1);
+  assert.equal(out.limit, 20);
+  assert.equal(out.items.length, 1);
+  assert.equal(out.items[0].id, 'u1');
+});
