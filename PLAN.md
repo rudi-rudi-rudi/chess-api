@@ -33,12 +33,12 @@ Ship a production-ready SaaS chess API where users can sign in, create API keys,
 - [ ] Pagination DTOs + list endpoints:
   - [x] `GET /games` with filters/status/mode
   - [x] `GET /players` (or profile-scoped player listing)
-- [ ] Ownership checks on all mutable resources
+- [x] Ownership checks on all mutable resources
 
 ### 3) Data model completion
-- [ ] `players` table (profile for app users)
-- [ ] `game_players` table (white/black participants)
-- [ ] Optional metadata fields for external app IDs
+- [x] `players` table (profile for app users)
+- [x] `game_players` table (white/black participants)
+- [x] Optional metadata fields for external app IDs
 
 ### 4) Docs + Developer onboarding
 - [ ] “Get key in 60 seconds” flow docs

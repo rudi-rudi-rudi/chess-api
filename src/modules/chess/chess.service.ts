@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { and, desc, eq } from 'drizzle-orm';
 import { DatabaseService } from '../../database/database.service.js';
-import { games, users } from '../../database/schema.js';
+import { gamePlayers, games, players } from '../../database/schema.js';
 import { randomId } from '../../config/crypto.js';
 import { aiMove, createState, hydrate, legalMoves, move, present, resign, serialize, type Color, type GameMode } from './chess.engine.js';
 
@@ -44,18 +44,90 @@ export class ChessService {
 
     const rows = await this.dbs.db
       .select({
-        id: users.id,
-        name: users.name,
-        email: users.email,
-        picture: users.picture,
-        createdAt: users.createdAt,
+        id: players.id,
+        displayName: players.displayName,
+        rating: players.rating,
+        externalAppUserId: players.externalAppUserId,
+        createdAt: players.createdAt,
+        updatedAt: players.updatedAt,
       })
-      .from(users)
-      .where(eq(users.id, userId))
+      .from(players)
+      .where(eq(players.userId, userId))
+      .orderBy(desc(players.updatedAt))
       .limit(limit)
       .offset((page - 1) * limit);
 
     return { page, limit, items: rows };
+  }
+
+  async createPlayer(
+    userId: string,
+    body: { displayName: string; rating?: number; externalAppUserId?: string }
+  ) {
+    const id = randomId();
+    await this.dbs.db.insert(players).values({
+      id,
+      userId,
+      displayName: body.displayName.trim(),
+      rating: body.rating ?? 1200,
+      externalAppUserId: body.externalAppUserId ?? null,
+      updatedAt: new Date(),
+    });
+
+    const rows = await this.dbs.db
+      .select({
+        id: players.id,
+        displayName: players.displayName,
+        rating: players.rating,
+        externalAppUserId: players.externalAppUserId,
+        createdAt: players.createdAt,
+        updatedAt: players.updatedAt,
+      })
+      .from(players)
+      .where(eq(players.id, id))
+      .limit(1);
+
+    return rows[0]!;
+  }
+
+  async assignPlayerToGame(
+    userId: string,
+    gameId: string,
+    body: { playerId: string; color: 'w' | 'b' }
+  ) {
+    await this.load(userId, gameId); // ownership check
+
+    const ownedPlayer = await this.dbs.db
+      .select({ id: players.id })
+      .from(players)
+      .where(and(eq(players.id, body.playerId), eq(players.userId, userId)))
+      .limit(1);
+
+    if (!ownedPlayer.length) {
+      throw new NotFoundException('Player not found');
+    }
+
+    const existing = await this.dbs.db
+      .select({ id: gamePlayers.id })
+      .from(gamePlayers)
+      .where(and(eq(gamePlayers.gameId, gameId), eq(gamePlayers.color, body.color)))
+      .limit(1);
+
+    if (existing.length) {
+      await this.dbs.db
+        .update(gamePlayers)
+        .set({ playerId: body.playerId })
+        .where(eq(gamePlayers.id, existing[0]!.id));
+    } else {
+      await this.dbs.db.insert(gamePlayers).values({
+        id: randomId(),
+        gameId,
+        playerId: body.playerId,
+        color: body.color,
+      });
+    }
+
+    return { ok: true };
   }
 
   async create(userId: string, body: { mode?: GameMode; fen?: string; aiColor?: Color; timeControl?: { initialSeconds: number; incrementSeconds?: number } }) {
@@ -68,7 +140,7 @@ export class ChessService {
   async get(userId: string, id: string) {
     const row = await this.load(userId, id);
     const state = hydrate(row);
-    await this.save(id, state);
+    await this.save(userId, id, state);
     return present(id, state);
   }
 
@@ -80,7 +152,7 @@ export class ChessService {
     const row = await this.load(userId, id);
     const state = hydrate(row);
     const m = legalMoves(state, from);
-    await this.save(id, state);
+    await this.save(userId, id, state);
     return { gameId: id, from: from ?? null, count: m.length, moves: m };
   }
 
@@ -89,7 +161,7 @@ export class ChessService {
     const state = hydrate(row);
     const r = move(state, body);
     if ('error' in r) return r;
-    await this.save(id, state);
+    await this.save(userId, id, state);
     return { move: r.move, state: present(id, state) };
   }
 
@@ -98,7 +170,7 @@ export class ChessService {
     const state = hydrate(row);
     const r = await aiMove(state);
     if ('error' in r) return r;
-    await this.save(id, state);
+    await this.save(userId, id, state);
     return { move: r.move, state: present(id, state) };
   }
 
@@ -106,7 +178,7 @@ export class ChessService {
     const row = await this.load(userId, id);
     const state = hydrate(row);
     resign(state, color);
-    await this.save(id, state);
+    await this.save(userId, id, state);
     return present(id, state);
   }
 
@@ -117,7 +189,10 @@ export class ChessService {
     return row as any;
   }
 
-  private async save(id: string, state: any) {
-    await this.dbs.db.update(games).set({ ...serialize(state), updatedAt: new Date() }).where(eq(games.id, id));
+  private async save(userId: string, id: string, state: any) {
+    await this.dbs.db
+      .update(games)
+      .set({ ...serialize(state), updatedAt: new Date() })
+      .where(and(eq(games.id, id), eq(games.userId, userId)));
   }
 }

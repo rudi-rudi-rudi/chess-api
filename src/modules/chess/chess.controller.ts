@@ -6,6 +6,8 @@ import { MoveDto } from './dto/move.dto.js';
 import { ResignDto } from './dto/resign.dto.js';
 import { ListGamesDto } from './dto/list-games.dto.js';
 import { ListPlayersDto } from './dto/list-players.dto.js';
+import { CreatePlayerDto } from './dto/create-player.dto.js';
+import { AssignPlayerDto } from './dto/assign-player.dto.js';
 
 @Controller('games')
 @UseGuards(ApiKeyGuard)
@@ -20,6 +22,16 @@ export class ChessController {
   @Get('/players')
   listPlayers(@Req() req: any, @Query() query: ListPlayersDto) {
     return this.chess.listPlayers(req.apiUserId, query || {});
+  }
+
+  @Post('/players')
+  createPlayer(@Req() req: any, @Body() body: CreatePlayerDto) {
+    return this.chess.createPlayer(req.apiUserId, body);
+  }
+
+  @Post(':id/players')
+  assignPlayer(@Req() req: any, @Param('id') id: string, @Body() body: AssignPlayerDto) {
+    return this.chess.assignPlayerToGame(req.apiUserId, id, body);
   }
 
   @Post()

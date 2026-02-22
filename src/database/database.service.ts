@@ -60,6 +60,16 @@ export class DatabaseService implements OnModuleInit {
         updated_at timestamptz not null default now()
       );`;
     await this.client`
+      create table if not exists players (
+        id text primary key,
+        user_id text not null references users(id) on delete cascade,
+        display_name text not null,
+        rating integer not null default 1200,
+        external_app_user_id text,
+        created_at timestamptz not null default now(),
+        updated_at timestamptz not null default now()
+      );`;
+    await this.client`
       create table if not exists games (
         id text primary key,
         user_id text not null references users(id) on delete cascade,
@@ -80,6 +90,14 @@ export class DatabaseService implements OnModuleInit {
         last_tick_at integer,
         created_at timestamptz not null default now(),
         updated_at timestamptz not null default now()
+      );`;
+    await this.client`
+      create table if not exists game_players (
+        id text primary key,
+        game_id text not null references games(id) on delete cascade,
+        player_id text not null references players(id) on delete cascade,
+        color text not null,
+        created_at timestamptz not null default now()
       );`;
   }
 }
