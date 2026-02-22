@@ -1,15 +1,81 @@
-# ♟️ Chess API ♟️
-API for playing chess and highscores storing. Api could be easily used to implement a multiplayer room based chess game, because every instance of a game initilizes new unique game_id.
-* ### [API Documentation](https://documenter.getpostman.com/view/1741165/chess-api/7Lof2bk#intro)
+# chess-api v2 (TypeScript)
 
-## Feautures:
+Modern general-purpose chess API rewrite.
 
-* Player vs. Player game mode
-* Player vs. Computer game mode
-* Highscores data storing
+## Goals
 
+- clean, minimal routes for external users
+- player-vs-player and player-vs-engine support
+- timed games with clocks + increment
+- easy path to persistence/auth later
 
-## Built With
+## Run
 
-* [Chess.js](https://github.com/jhlywa/chess.js)
-* [ChessCorp Artificial Intelligence: Kong](https://www.npmjs.com/package/chess-ai-kong)
+```bash
+cd v2
+npm install
+npm run dev
+```
+
+## Core API
+
+### Create game
+`POST /v2/games`
+
+Example body:
+```json
+{
+  "mode": "pve",
+  "aiColor": "b",
+  "timeControl": {
+    "initialSeconds": 300,
+    "incrementSeconds": 2
+  }
+}
+```
+
+### Get game state
+`GET /v2/games/:id`
+
+### Delete game
+`DELETE /v2/games/:id`
+
+### List legal moves
+`GET /v2/games/:id/moves`
+`GET /v2/games/:id/moves?from=e2`
+
+### Make move
+`POST /v2/games/:id/moves`
+
+Body (one of):
+```json
+{ "from": "e2", "to": "e4" }
+```
+```json
+{ "san": "Nf3" }
+```
+
+### Ask engine to move (pve mode)
+`POST /v2/games/:id/ai-move`
+
+### Resign
+`POST /v2/games/:id/resign`
+
+```json
+{ "color": "w" }
+```
+
+## Time controls
+
+When enabled, each game tracks:
+- white and black remaining time
+- running side clock
+- increment per move
+- timeout result when a clock reaches 0
+
+## Next
+
+- add persistence (Redis/Postgres)
+- add OpenAPI schema + validation
+- add tests + CI
+- add stronger chess engine for pve mode
