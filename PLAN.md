@@ -51,7 +51,7 @@ Ship a production-ready SaaS chess API where users can sign in, create API keys,
 - [x] env validation at boot
 - [x] CI workflow (build + test)
 - [x] Vercel deployment files/config
-- [ ] staging verification script
+- [x] staging verification script
 
 ### 6) QA checklist (before STG signoff)
 - [ ] Google login works
