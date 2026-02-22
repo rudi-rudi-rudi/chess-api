@@ -52,3 +52,38 @@ test('billing service creates stripe customer and inserts missing plan row', asy
   assert.equal(mock.calls.inserted.userId, 'u2');
   assert.equal(mock.calls.inserted.stripeCustomerId, 'cus_inserted');
 });
+
+test('billing service creates checkout session', async () => {
+  const prevPrice = process.env.STRIPE_PRICE_PRO;
+  process.env.STRIPE_PRICE_PRO = 'price_test_123';
+
+  const mock = makeDbMock({ stripeCustomerId: 'cus_existing', tier: 'pro', status: 'active' });
+  const billing = new BillingService(mock as any);
+
+  (billing as any).stripe = {
+    checkout: {
+      sessions: {
+        create: async () => ({ id: 'cs_123', url: 'https://checkout.stripe.test/session' }),
+      },
+    },
+  };
+
+  const out = await billing.createCheckoutSession({ userId: 'u1', email: 'u1@example.com' });
+  assert.equal(out.sessionId, 'cs_123');
+  assert.ok(out.url?.includes('checkout.stripe.test'));
+
+  process.env.STRIPE_PRICE_PRO = prevPrice;
+});
+
+test('billing service rejects checkout without price configuration', async () => {
+  const prevPrice = process.env.STRIPE_PRICE_PRO;
+  delete process.env.STRIPE_PRICE_PRO;
+
+  const mock = makeDbMock({ stripeCustomerId: 'cus_existing', tier: 'free', status: 'active' });
+  const billing = new BillingService(mock as any);
+  (billing as any).stripe = { checkout: { sessions: { create: async () => ({ id: 'x', url: 'x' }) } } };
+
+  await assert.rejects(() => billing.createCheckoutSession({ userId: 'u1', email: 'u1@example.com' }));
+
+  process.env.STRIPE_PRICE_PRO = prevPrice;
+});

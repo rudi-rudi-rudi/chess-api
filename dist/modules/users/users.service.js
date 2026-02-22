@@ -7,15 +7,23 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { and, eq } from 'drizzle-orm';
 import { DatabaseService } from '../../database/database.service.js';
-import { apiKeys } from '../../database/schema.js';
+import { apiKeys, plans } from '../../database/schema.js';
 import { randomId, randomToken, sha256 } from '../../config/crypto.js';
 let UsersService = class UsersService {
     dbs;
     constructor(dbs) {
         this.dbs = dbs;
+    }
+    async getPlan(userId) {
+        const rows = await this.dbs.db.select().from(plans).where(eq(plans.userId, userId)).limit(1);
+        if (!rows.length) {
+            await this.dbs.db.insert(plans).values({ userId, tier: 'free', status: 'active', updatedAt: new Date() });
+            return { tier: 'free', status: 'active' };
+        }
+        return rows[0];
     }
     async listApiKeys(userId) {
         return this.dbs.db
@@ -31,6 +39,13 @@ let UsersService = class UsersService {
             .where(eq(apiKeys.userId, userId));
     }
     async createApiKey(userId, name = 'default') {
+        const plan = await this.getPlan(userId);
+        const existing = await this.listApiKeys(userId);
+        const activeCount = existing.filter((k) => k.active).length;
+        const maxKeys = plan.tier === 'pro' ? 20 : 2;
+        if (activeCount >= maxKeys) {
+            throw new BadRequestException(`API key limit reached for ${plan.tier} plan (max ${maxKeys})`);
+        }
         const rawKey = `chess_${randomToken(24)}`;
         await this.dbs.db.insert(apiKeys).values({
             id: randomId(),

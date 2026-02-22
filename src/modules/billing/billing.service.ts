@@ -1,4 +1,4 @@
-import { Injectable, ServiceUnavailableException } from '@nestjs/common';
+import { BadRequestException, Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
 import Stripe from 'stripe';
 import { DatabaseService } from '../../database/database.service.js';
@@ -55,5 +55,38 @@ export class BillingService {
     }
 
     return customer.id;
+  }
+
+  async createCheckoutSession(input: {
+    userId: string;
+    email: string;
+    name?: string;
+    priceId?: string;
+  }) {
+    const stripe = this.getStripeClient();
+
+    const configuredPrice = process.env.STRIPE_PRICE_PRO;
+    const priceId = input.priceId || configuredPrice;
+    if (!priceId) {
+      throw new BadRequestException('Missing priceId and STRIPE_PRICE_PRO env');
+    }
+
+    const appUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const customerId = await this.ensureStripeCustomer(input.userId, input.email, input.name);
+
+    const session = await stripe.checkout.sessions.create({
+      mode: 'subscription',
+      customer: customerId,
+      line_items: [{ price: priceId, quantity: 1 }],
+      success_url: `${appUrl}/dashboard?billing=success`,
+      cancel_url: `${appUrl}/dashboard?billing=cancelled`,
+      metadata: { userId: input.userId },
+      allow_promotion_codes: true,
+    });
+
+    return {
+      sessionId: session.id,
+      url: session.url,
+    };
   }
 }

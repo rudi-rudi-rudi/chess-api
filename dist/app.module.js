@@ -11,6 +11,7 @@ import { AuthModule } from './modules/auth/auth.module.js';
 import { UsersModule } from './modules/users/users.module.js';
 import { ChessModule } from './modules/chess/chess.module.js';
 import { HealthModule } from './modules/health/health.module.js';
+import { BillingModule } from './modules/billing/billing.module.js';
 let AppModule = class AppModule {
 };
 AppModule = __decorate([
@@ -22,6 +23,7 @@ AppModule = __decorate([
             UsersModule,
             ChessModule,
             HealthModule,
+            BillingModule,
         ],
     })
 ], AppModule);

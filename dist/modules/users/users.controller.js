@@ -22,6 +22,9 @@ let UsersController = class UsersController {
     me(req) {
         return { user: req.user };
     }
+    async plan(req) {
+        return { plan: await this.users.getPlan(req.user.id) };
+    }
     async list(req) {
         return { items: await this.users.listApiKeys(req.user.id) };
     }
@@ -40,6 +43,13 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", void 0)
 ], UsersController.prototype, "me", null);
+__decorate([
+    Get('plan'),
+    __param(0, Req()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], UsersController.prototype, "plan", null);
 __decorate([
     Get('api-keys'),
     __param(0, Req()),

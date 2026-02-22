@@ -48,6 +48,16 @@ let DatabaseService = class DatabaseService {
         last_used_at timestamptz
       );`;
         await this.client `
+      create table if not exists plans (
+        user_id text primary key references users(id) on delete cascade,
+        tier text not null default 'free',
+        status text not null default 'active',
+        stripe_customer_id text,
+        stripe_subscription_id text,
+        created_at timestamptz not null default now(),
+        updated_at timestamptz not null default now()
+      );`;
+        await this.client `
       create table if not exists games (
         id text primary key,
         user_id text not null references users(id) on delete cascade,
