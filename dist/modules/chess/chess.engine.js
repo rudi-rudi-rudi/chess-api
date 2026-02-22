@@ -100,7 +100,17 @@ export function move(s, payload) {
     if (s.status !== 'active')
         return { error: 'Game is already finished' };
     const mover = s.chess.turn();
-    const m = payload.san ? s.chess.move(payload.san) : payload.from && payload.to ? s.chess.move({ from: payload.from, to: payload.to, promotion: payload.promotion ?? 'q' }) : null;
+    let m = null;
+    try {
+        m = payload.san
+            ? s.chess.move(payload.san)
+            : payload.from && payload.to
+                ? s.chess.move({ from: payload.from, to: payload.to, promotion: payload.promotion ?? 'q' })
+                : null;
+    }
+    catch {
+        m = null;
+    }
     if (!m)
         return { error: 'Illegal move' };
     finalize(s, mover);

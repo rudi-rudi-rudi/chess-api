@@ -1,6 +1,9 @@
 import { Body, Controller, Delete, Get, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiKeyGuard } from '../../common/guards/api-key.guard.js';
 import { ChessService } from './chess.service.js';
+import { CreateGameDto } from './dto/create-game.dto.js';
+import { MoveDto } from './dto/move.dto.js';
+import { ResignDto } from './dto/resign.dto.js';
 
 @Controller('games')
 @UseGuards(ApiKeyGuard)
@@ -8,7 +11,7 @@ export class ChessController {
   constructor(private readonly chess: ChessService) {}
 
   @Post()
-  create(@Req() req: any, @Body() body: any) {
+  create(@Req() req: any, @Body() body: CreateGameDto) {
     return this.chess.create(req.apiUserId, body || {});
   }
 
@@ -29,7 +32,7 @@ export class ChessController {
   }
 
   @Post(':id/moves')
-  move(@Req() req: any, @Param('id') id: string, @Body() body: any) {
+  move(@Req() req: any, @Param('id') id: string, @Body() body: MoveDto) {
     return this.chess.makeMove(req.apiUserId, id, body || {});
   }
 
@@ -39,8 +42,7 @@ export class ChessController {
   }
 
   @Post(':id/resign')
-  resign(@Req() req: any, @Param('id') id: string, @Body() body: { color?: 'w' | 'b' }) {
-    if (!body?.color || !['w', 'b'].includes(body.color)) return { error: 'color must be w or b' };
+  resign(@Req() req: any, @Param('id') id: string, @Body() body: ResignDto) {
     return this.chess.makeResign(req.apiUserId, id, body.color);
   }
 }

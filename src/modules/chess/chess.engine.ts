@@ -125,7 +125,18 @@ export function move(s: GameState, payload: { san?: string; from?: string; to?: 
   tick(s);
   if (s.status !== 'active') return { error: 'Game is already finished' } as const;
   const mover = s.chess.turn();
-  const m = payload.san ? s.chess.move(payload.san) : payload.from && payload.to ? s.chess.move({ from: payload.from, to: payload.to, promotion: payload.promotion ?? 'q' }) : null;
+  let m: ReturnType<Chess['move']> | null = null;
+
+  try {
+    m = payload.san
+      ? s.chess.move(payload.san)
+      : payload.from && payload.to
+        ? s.chess.move({ from: payload.from, to: payload.to, promotion: payload.promotion ?? 'q' })
+        : null;
+  } catch {
+    m = null;
+  }
+
   if (!m) return { error: 'Illegal move' } as const;
   finalize(s, mover);
   return { move: m } as const;

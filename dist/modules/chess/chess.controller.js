@@ -13,6 +13,9 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 import { Body, Controller, Delete, Get, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiKeyGuard } from '../../common/guards/api-key.guard.js';
 import { ChessService } from './chess.service.js';
+import { CreateGameDto } from './dto/create-game.dto.js';
+import { MoveDto } from './dto/move.dto.js';
+import { ResignDto } from './dto/resign.dto.js';
 let ChessController = class ChessController {
     chess;
     constructor(chess) {
@@ -38,8 +41,6 @@ let ChessController = class ChessController {
         return this.chess.makeAiMove(req.apiUserId, id);
     }
     resign(req, id, body) {
-        if (!body?.color || !['w', 'b'].includes(body.color))
-            return { error: 'color must be w or b' };
         return this.chess.makeResign(req.apiUserId, id, body.color);
     }
 };
@@ -48,7 +49,7 @@ __decorate([
     __param(0, Req()),
     __param(1, Body()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:paramtypes", [Object, CreateGameDto]),
     __metadata("design:returntype", void 0)
 ], ChessController.prototype, "create", null);
 __decorate([
@@ -82,7 +83,7 @@ __decorate([
     __param(1, Param('id')),
     __param(2, Body()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, String, Object]),
+    __metadata("design:paramtypes", [Object, String, MoveDto]),
     __metadata("design:returntype", void 0)
 ], ChessController.prototype, "move", null);
 __decorate([
@@ -99,7 +100,7 @@ __decorate([
     __param(1, Param('id')),
     __param(2, Body()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, String, Object]),
+    __metadata("design:paramtypes", [Object, String, ResignDto]),
     __metadata("design:returntype", void 0)
 ], ChessController.prototype, "resign", null);
 ChessController = __decorate([

@@ -12,20 +12,21 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 };
 import { Body, Controller, Post } from '@nestjs/common';
 import { AuthService } from './auth.service.js';
+import { GoogleLoginDto } from './dto/google-login.dto.js';
 let AuthController = class AuthController {
     auth;
     constructor(auth) {
         this.auth = auth;
     }
     google(body) {
-        return this.auth.loginWithGoogle(body.idToken || '');
+        return this.auth.loginWithGoogle(body.idToken);
     }
 };
 __decorate([
     Post('google'),
     __param(0, Body()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
+    __metadata("design:paramtypes", [GoogleLoginDto]),
     __metadata("design:returntype", void 0)
 ], AuthController.prototype, "google", null);
 AuthController = __decorate([

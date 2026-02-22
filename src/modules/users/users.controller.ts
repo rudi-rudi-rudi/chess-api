@@ -1,6 +1,7 @@
 import { Body, Controller, Delete, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
 import { SessionGuard } from '../../common/guards/session.guard.js';
 import { UsersService } from './users.service.js';
+import { CreateApiKeyDto } from './dto/create-api-key.dto.js';
 
 @Controller('me')
 @UseGuards(SessionGuard)
@@ -18,7 +19,7 @@ export class UsersController {
   }
 
   @Post('api-keys')
-  create(@Req() req: any, @Body() body: { name?: string }) {
+  create(@Req() req: any, @Body() body: CreateApiKeyDto) {
     return this.users.createApiKey(req.user.id, body?.name || 'default');
   }
 

@@ -13,6 +13,7 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 import { Body, Controller, Delete, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
 import { SessionGuard } from '../../common/guards/session.guard.js';
 import { UsersService } from './users.service.js';
+import { CreateApiKeyDto } from './dto/create-api-key.dto.js';
 let UsersController = class UsersController {
     users;
     constructor(users) {
@@ -51,7 +52,7 @@ __decorate([
     __param(0, Req()),
     __param(1, Body()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:paramtypes", [Object, CreateApiKeyDto]),
     __metadata("design:returntype", void 0)
 ], UsersController.prototype, "create", null);
 __decorate([
