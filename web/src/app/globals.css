@@ -3,15 +3,15 @@
 @tailwind utilities;
 
 :root {
-  --background: 222 47% 8%;
+  --background: 224 45% 7%;
   --foreground: 210 40% 98%;
-  --card: 222 47% 11%;
+  --card: 224 38% 11%;
   --card-foreground: 210 40% 98%;
-  --primary: 221 83% 53%;
+  --primary: 217 91% 60%;
   --primary-foreground: 210 40% 98%;
-  --muted: 217 33% 17%;
-  --muted-foreground: 215 20% 65%;
-  --border: 217 33% 22%;
+  --muted: 225 28% 16%;
+  --muted-foreground: 215 18% 70%;
+  --border: 224 24% 24%;
 }
 
 body {
