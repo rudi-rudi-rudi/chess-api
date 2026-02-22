@@ -88,6 +88,20 @@ export default function DocsPage() {
             <pre className="overflow-x-auto rounded-md border border-border bg-background/60 p-3 text-xs text-muted-foreground">{ai}</pre>
           </CardContent>
         </Card>
+
+        <Card className="mt-4">
+          <CardContent>
+            <h3 className="mb-2 font-semibold">JavaScript SDK-style snippet</h3>
+            <pre className="overflow-x-auto rounded-md border border-border bg-background/60 p-3 text-xs text-muted-foreground">{`const API_BASE = '${API_BASE}'\n\nasync function chess(path, options = {}) {\n  const res = await fetch(API_BASE + path, {\n    ...options,\n    headers: {\n      'x-api-key': process.env.CHESS_API_KEY,\n      'content-type': 'application/json',\n      ...(options.headers || {}),\n    },\n  })\n  if (!res.ok) throw new Error(await res.text())\n  return res.json()\n}\n\nconst game = await chess('/games', {\n  method: 'POST',\n  body: JSON.stringify({ mode: 'pve', aiColor: 'b' }),\n})\nawait chess('/games/' + game.id + '/moves', {\n  method: 'POST',\n  body: JSON.stringify({ from: 'e2', to: 'e4' }),\n})`}</pre>
+          </CardContent>
+        </Card>
+
+        <Card className="mt-4">
+          <CardContent>
+            <h3 className="mb-2 font-semibold">TypeScript SDK-style snippet</h3>
+            <pre className="overflow-x-auto rounded-md border border-border bg-background/60 p-3 text-xs text-muted-foreground">{`type CreateGameInput = {\n  mode?: 'pvp' | 'pve'\n  aiColor?: 'w' | 'b'\n  timeControl?: { initialSeconds: number; incrementSeconds?: number }\n}\n\nclass ChessApiClient {\n  constructor(private base: string, private apiKey: string) {}\n\n  private async request<T>(path: string, init?: RequestInit): Promise<T> {\n    const res = await fetch(this.base + path, {\n      ...init,\n      headers: {\n        'x-api-key': this.apiKey,\n        'content-type': 'application/json',\n        ...(init?.headers || {}),\n      },\n    })\n    if (!res.ok) throw new Error(await res.text())\n    return res.json() as Promise<T>\n  }\n\n  createGame(input: CreateGameInput) {\n    return this.request<{ id: string }>('/games', {\n      method: 'POST',\n      body: JSON.stringify(input),\n    })\n  }\n\n  move(gameId: string, from: string, to: string) {\n    return this.request('/games/' + gameId + '/moves', {\n      method: 'POST',\n      body: JSON.stringify({ from, to }),\n    })\n  }\n}`}</pre>
+          </CardContent>
+        </Card>
       </div>
     </main>
   )

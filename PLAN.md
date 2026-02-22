@@ -42,8 +42,8 @@ Ship a production-ready SaaS chess API where users can sign in, create API keys,
 
 ### 4) Docs + Developer onboarding
 - [x] “Get key in 60 seconds” flow docs
-- [ ] Copy-paste SDK-style snippets (JS/TS + curl)
-- [ ] Plan limits docs + upgrade path
+- [x] Copy-paste SDK-style snippets (JS/TS + curl)
+- [x] Plan limits docs + upgrade path
 - [ ] Error code catalog
 
 ### 5) Ops + deployment

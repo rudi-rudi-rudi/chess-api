@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiKeyGuard } from '../../common/guards/api-key.guard.js';
 import { ChessService } from './chess.service.js';
 import { CreateGameDto } from './dto/create-game.dto.js';
@@ -8,6 +8,7 @@ import { ListGamesDto } from './dto/list-games.dto.js';
 import { ListPlayersDto } from './dto/list-players.dto.js';
 import { CreatePlayerDto } from './dto/create-player.dto.js';
 import { AssignPlayerDto } from './dto/assign-player.dto.js';
+import { UpdatePlayerDto } from './dto/update-player.dto.js';
 
 @Controller('games')
 @UseGuards(ApiKeyGuard)
@@ -27,6 +28,17 @@ export class ChessController {
   @Post('/players')
   createPlayer(@Req() req: any, @Body() body: CreatePlayerDto) {
     return this.chess.createPlayer(req.apiUserId, body);
+  }
+
+  @Patch('/players/:playerId')
+  updatePlayer(@Req() req: any, @Param('playerId') playerId: string, @Body() body: UpdatePlayerDto) {
+    return this.chess.updatePlayer(req.apiUserId, playerId, body);
+  }
+
+  @Delete('/players/:playerId')
+  async deletePlayer(@Req() req: any, @Param('playerId') playerId: string) {
+    await this.chess.deletePlayer(req.apiUserId, playerId);
+    return { ok: true };
   }
 
   @Post(':id/players')

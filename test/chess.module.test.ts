@@ -22,12 +22,19 @@ function makeDbMock(row?: any) {
         }
       },
     }),
-    delete: () => ({ where: async () => undefined }),
+    delete: () => ({
+      where: async () => {
+        state.players = [];
+      },
+    }),
     update: () => ({
       set: (v: any) => ({
         where: async () => {
           if (v.playerId && state.gamePlayers.length) {
             state.gamePlayers[0] = { ...state.gamePlayers[0], ...v };
+          }
+          if (state.players.length && (v.displayName !== undefined || v.rating !== undefined || v.externalAppUserId !== undefined)) {
+            state.players[0] = { ...state.players[0], ...v };
           }
           if (state.gameRow) state.gameRow = { ...state.gameRow, ...v };
         },
@@ -98,4 +105,22 @@ test('chess service assigns player to game color', async () => {
   const svc = new ChessService(mock as any);
   const out: any = await svc.assignPlayerToGame('u1', 'g1', { playerId: 'p1', color: 'w' });
   assert.equal(out.ok, true);
+});
+
+test('chess service updates owned player', async () => {
+  const mock = makeDbMock();
+  mock.state.players.push({ id: 'p1', userId: 'u1', displayName: 'Old', rating: 1200, externalAppUserId: null, updatedAt: new Date(), createdAt: new Date() });
+  const svc = new ChessService(mock as any);
+  const out: any = await svc.updatePlayer('u1', 'p1', { displayName: 'New Name', rating: 1300 });
+  assert.equal(out.displayName, 'New Name');
+  assert.equal(out.rating, 1300);
+});
+
+test('chess service deletes owned player', async () => {
+  const mock = makeDbMock();
+  mock.state.players.push({ id: 'p1', userId: 'u1', displayName: 'Delete Me', rating: 1200, updatedAt: new Date(), createdAt: new Date() });
+  const svc = new ChessService(mock as any);
+  await svc.deletePlayer('u1', 'p1');
+  const listed: any = await svc.listPlayers('u1', { page: 1, limit: 20 });
+  assert.equal(listed.items.length, 0);
 });

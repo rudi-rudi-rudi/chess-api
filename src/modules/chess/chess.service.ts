@@ -90,6 +90,63 @@ export class ChessService {
     return rows[0]!;
   }
 
+  async updatePlayer(
+    userId: string,
+    playerId: string,
+    body: { displayName?: string; rating?: number; externalAppUserId?: string }
+  ) {
+    const existing = await this.dbs.db
+      .select({ id: players.id })
+      .from(players)
+      .where(and(eq(players.id, playerId), eq(players.userId, userId)))
+      .limit(1);
+
+    if (!existing.length) throw new NotFoundException('Player not found');
+
+    const patch: {
+      displayName?: string;
+      rating?: number;
+      externalAppUserId?: string;
+      updatedAt: Date;
+    } = { updatedAt: new Date() };
+
+    if (body.displayName !== undefined) patch.displayName = body.displayName.trim();
+    if (body.rating !== undefined) patch.rating = body.rating;
+    if (body.externalAppUserId !== undefined) patch.externalAppUserId = body.externalAppUserId;
+
+    await this.dbs.db
+      .update(players)
+      .set(patch)
+      .where(and(eq(players.id, playerId), eq(players.userId, userId)));
+
+    const rows = await this.dbs.db
+      .select({
+        id: players.id,
+        displayName: players.displayName,
+        rating: players.rating,
+        externalAppUserId: players.externalAppUserId,
+        createdAt: players.createdAt,
+        updatedAt: players.updatedAt,
+      })
+      .from(players)
+      .where(and(eq(players.id, playerId), eq(players.userId, userId)))
+      .limit(1);
+
+    return rows[0]!;
+  }
+
+  async deletePlayer(userId: string, playerId: string) {
+    const existing = await this.dbs.db
+      .select({ id: players.id })
+      .from(players)
+      .where(and(eq(players.id, playerId), eq(players.userId, userId)))
+      .limit(1);
+
+    if (!existing.length) throw new NotFoundException('Player not found');
+
+    await this.dbs.db.delete(players).where(and(eq(players.id, playerId), eq(players.userId, userId)));
+  }
+
   async assignPlayerToGame(
     userId: string,
     gameId: string,
