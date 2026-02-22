@@ -1,0 +1,11 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "installCommand": "npm ci",
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
+  "env": {
+    "NEXT_PUBLIC_API_BASE_URL": "@next_public_api_base_url",
+    "NEXT_PUBLIC_GOOGLE_CLIENT_ID": "@next_public_google_client_id"
+  }
+}

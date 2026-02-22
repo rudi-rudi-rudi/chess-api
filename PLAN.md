@@ -50,7 +50,7 @@ Ship a production-ready SaaS chess API where users can sign in, create API keys,
 - [x] docker-compose for local Postgres + app
 - [x] env validation at boot
 - [x] CI workflow (build + test)
-- [ ] Vercel deployment files/config
+- [x] Vercel deployment files/config
 - [ ] staging verification script
 
 ### 6) QA checklist (before STG signoff)

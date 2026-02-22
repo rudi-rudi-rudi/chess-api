@@ -42,6 +42,15 @@ npm install
 npm run dev
 ```
 
+### Vercel deploy (web)
+`web/vercel.json` is included for Vercel deployment.
+
+Required Vercel project env vars:
+- `NEXT_PUBLIC_API_BASE_URL`
+- `NEXT_PUBLIC_GOOGLE_CLIENT_ID`
+
+Suggested project root in Vercel: `web/`
+
 ## Auth routes
 - `POST /auth/google` with `{ idToken }`
 - `GET /me` (Bearer session token)
