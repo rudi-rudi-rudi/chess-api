@@ -1,0 +1,15 @@
+{
+  "name": "chess-api-v2",
+  "version": "2.0.0-alpha.1",
+  "private": true,
+  "type": "module",
+  "description": "Modern rewrite of chess-api",
+  "scripts": {
+    "dev": "node src/server.mjs",
+    "start": "node src/server.mjs"
+  },
+  "dependencies": {
+    "chess.js": "^1.4.0",
+    "fastify": "^5.0.0"
+  }
+}
