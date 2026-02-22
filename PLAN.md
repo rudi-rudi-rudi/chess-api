@@ -41,7 +41,7 @@ Ship a production-ready SaaS chess API where users can sign in, create API keys,
 - [x] Optional metadata fields for external app IDs
 
 ### 4) Docs + Developer onboarding
-- [ ] “Get key in 60 seconds” flow docs
+- [x] “Get key in 60 seconds” flow docs
 - [ ] Copy-paste SDK-style snippets (JS/TS + curl)
 - [ ] Plan limits docs + upgrade path
 - [ ] Error code catalog
