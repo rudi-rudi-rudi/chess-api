@@ -88,3 +88,29 @@ curl -s -X POST http://localhost:3000/games \
   -d '{"mode":"pve","aiColor":"b"}'
 ```
 
+## Plan limits + upgrade path
+
+### Free
+- API keys: **2 active keys**
+- Rate limit: **30 requests/minute** per API key
+- Monthly quota: **10,000 requests** per account
+
+### Pro
+- API keys: **20 active keys**
+- Rate limit: **300 requests/minute** per API key
+- Monthly quota: **1,000,000 requests** per account
+
+### Upgrade
+1. Create checkout session: `POST /billing/checkout-session`
+2. Redirect user to returned Stripe URL
+3. Stripe webhook updates plan to `pro` when subscription is active
+4. User can manage billing via `POST /billing/portal-session`
+
+Minimal checkout call:
+```bash
+curl -s -X POST http://localhost:3000/billing/checkout-session \
+  -H "authorization: Bearer $ACCESS_TOKEN" \
+  -H "content-type: application/json" \
+  -d '{}'
+```
+
