@@ -31,7 +31,7 @@ Ship a production-ready SaaS chess API where users can sign in, create API keys,
 - [x] Request logging middleware with requestId
 - [ ] API key rate limit per key (not only global)
 - [ ] Pagination DTOs + list endpoints:
-  - [ ] `GET /games` with filters/status/mode
+  - [x] `GET /games` with filters/status/mode
   - [ ] `GET /players` (or profile-scoped player listing)
 - [ ] Ownership checks on all mutable resources
 

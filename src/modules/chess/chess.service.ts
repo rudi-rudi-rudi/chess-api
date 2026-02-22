@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { and, eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import { DatabaseService } from '../../database/database.service.js';
 import { games } from '../../database/schema.js';
 import { randomId } from '../../config/crypto.js';
@@ -8,6 +8,35 @@ import { aiMove, createState, hydrate, legalMoves, move, present, resign, serial
 @Injectable()
 export class ChessService {
   constructor(private readonly dbs: DatabaseService) {}
+
+  async list(
+    userId: string,
+    query: { mode?: GameMode; status?: 'active' | 'finished'; page?: number; limit?: number }
+  ) {
+    const page = Math.max(1, Number(query.page ?? 1));
+    const limit = Math.min(100, Math.max(1, Number(query.limit ?? 20)));
+
+    const conditions = [eq(games.userId, userId)];
+    if (query.mode) conditions.push(eq(games.mode, query.mode));
+    if (query.status) conditions.push(eq(games.status, query.status));
+
+    const rows = await this.dbs.db
+      .select({
+        id: games.id,
+        mode: games.mode,
+        status: games.status,
+        turn: games.turn,
+        updatedAt: games.updatedAt,
+        createdAt: games.createdAt,
+      })
+      .from(games)
+      .where(and(...conditions))
+      .orderBy(desc(games.updatedAt))
+      .limit(limit)
+      .offset((page - 1) * limit);
+
+    return { page, limit, items: rows };
+  }
 
   async create(userId: string, body: { mode?: GameMode; fen?: string; aiColor?: Color; timeControl?: { initialSeconds: number; incrementSeconds?: number } }) {
     const id = randomId();

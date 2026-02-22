@@ -4,11 +4,17 @@ import { ChessService } from './chess.service.js';
 import { CreateGameDto } from './dto/create-game.dto.js';
 import { MoveDto } from './dto/move.dto.js';
 import { ResignDto } from './dto/resign.dto.js';
+import { ListGamesDto } from './dto/list-games.dto.js';
 
 @Controller('games')
 @UseGuards(ApiKeyGuard)
 export class ChessController {
   constructor(private readonly chess: ChessService) {}
+
+  @Get()
+  list(@Req() req: any, @Query() query: ListGamesDto) {
+    return this.chess.list(req.apiUserId, query || {});
+  }
 
   @Post()
   create(@Req() req: any, @Body() body: CreateGameDto) {
