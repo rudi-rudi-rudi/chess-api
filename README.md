@@ -1,11 +1,28 @@
-# ♟️ chess-api
+# chess-api (rewrite)
 
-General-purpose Chess API for external users.
+Production-style chess API with:
+- Google social auth (users)
+- API key management per user
+- Chess game endpoints protected by API key
+- PvP + PvE
+- Timed games (clock + increment)
+- Postgres + Drizzle
 
-- Player vs Player (`pvp`)
-- Player vs Engine (`pve`)
-- Timed games (initial time + increment)
-- Clean game-centric routes
+## Stack
+- Fastify
+- Drizzle ORM
+- PostgreSQL
+- chess.js
+- chess-ai-kong (engine)
+
+## Environment
+Create `.env` with:
+
+```env
+DATABASE_URL=postgres://...
+GOOGLE_CLIENT_ID=your-google-oauth-client-id
+PORT=3000
+```
 
 ## Run
 
@@ -14,16 +31,32 @@ npm install
 npm run dev
 ```
 
-## API
+## Auth flow
+1. Client performs Google Sign-In and gets `idToken`
+2. Call `POST /auth/google` with `{ "idToken": "..." }`
+3. Receive `accessToken` (session bearer)
+4. Use bearer token for `/me` + `/me/api-keys`
+5. Use generated API key in `x-api-key` header for chess routes
 
-### Health
-- `GET /`
-- `GET /api`
+## API overview
 
-### Create game
-`POST /games`
+### Session auth routes
+- `POST /auth/google`
+- `GET /me`
+- `GET /me/api-keys`
+- `POST /me/api-keys`
+- `DELETE /me/api-keys/:id`
 
-Example:
+### Chess routes (require `x-api-key`)
+- `POST /games`
+- `GET /games/:id`
+- `DELETE /games/:id`
+- `GET /games/:id/moves?from=e2`
+- `POST /games/:id/moves`
+- `POST /games/:id/ai-move`
+- `POST /games/:id/resign`
+
+### Create game example
 ```json
 {
   "mode": "pve",
@@ -33,37 +66,4 @@ Example:
     "incrementSeconds": 2
   }
 }
-```
-
-### Get game state
-`GET /games/:id`
-
-### Delete game
-`DELETE /games/:id`
-
-### List legal moves
-- `GET /games/:id/moves`
-- `GET /games/:id/moves?from=e2`
-
-### Make move
-`POST /games/:id/moves`
-
-```json
-{ "from": "e2", "to": "e4" }
-```
-or
-```json
-{ "san": "Nf3" }
-```
-
-### Engine move (uses Stockfish, fallback to chess-ai-kong)
-`POST /games/:id/ai-move`
-
-> For best strength install Stockfish on host (`brew install stockfish` on macOS).
-
-### Resign
-`POST /games/:id/resign`
-
-```json
-{ "color": "w" }
 ```

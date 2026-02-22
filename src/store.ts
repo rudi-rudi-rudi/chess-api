@@ -1,10 +1,16 @@
 import { Chess, type Square } from 'chess.js';
-import crypto from 'node:crypto';
 import { createRequire } from 'node:module';
-import { spawn } from 'node:child_process';
 
 export type GameMode = 'pvp' | 'pve';
 export type Color = 'w' | 'b';
+
+const require = createRequire(import.meta.url);
+const chessAI: {
+  play: (history: string[]) => string;
+  setOptions: (opts: { depth?: number; monitor?: boolean; strategy?: string; timeout?: number }) => void;
+} = require('chess-ai-kong');
+
+chessAI.setOptions({ depth: 3, monitor: false, strategy: 'basic', timeout: 5000 });
 
 export interface TimeControl {
   initialMs: number;
@@ -14,121 +20,35 @@ export interface TimeControl {
   lastTickAt: number;
 }
 
-export interface Game {
-  id: string;
+export interface GameState {
   mode: GameMode;
-  chess: Chess;
-  createdAt: string;
-  updatedAt: string;
-  status: 'active' | 'finished';
-  result?: {
-    reason: 'checkmate' | 'draw' | 'timeout' | 'resign';
-    winner: Color | null;
-  };
-  timeControl: TimeControl | null;
   aiColor: Color | null;
-}
-
-export interface CreateGameInput {
-  fen?: string;
-  mode?: GameMode;
-  aiColor?: Color;
-  timeControl?: {
-    initialSeconds: number;
-    incrementSeconds?: number;
-  };
-}
-
-const games = new Map<string, Game>();
-
-const require = createRequire(import.meta.url);
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const chessAI: {
-  play: (history: string[]) => string;
-  setOptions: (opts: { depth?: number; monitor?: boolean; strategy?: string; timeout?: number }) => void;
-} = require('chess-ai-kong');
-
-chessAI.setOptions({
-  depth: 3,
-  monitor: false,
-  strategy: 'basic',
-  timeout: 5000
-});
-
-async function getStockfishBestMove(fen: string, moveTimeMs = 400): Promise<string | null> {
-  return new Promise((resolve) => {
-    const engine = spawn('stockfish');
-    let settled = false;
-
-    const done = (move: string | null) => {
-      if (settled) return;
-      settled = true;
-      try {
-        engine.stdin.write('quit\n');
-      } catch {
-        // ignore
-      }
-      engine.kill();
-      resolve(move);
-    };
-
-    const timeout = setTimeout(() => done(null), Math.max(200, moveTimeMs + 1500));
-
-    engine.once('error', () => {
-      clearTimeout(timeout);
-      done(null);
-    });
-
-    engine.stdout.setEncoding('utf8');
-    engine.stdout.on('data', (chunk: string) => {
-      const lines = chunk
-        .split(/\r?\n/)
-        .map((l) => l.trim())
-        .filter(Boolean);
-
-      for (const line of lines) {
-        if (line === 'uciok') {
-          engine.stdin.write('isready\n');
-        } else if (line === 'readyok') {
-          engine.stdin.write(`position fen ${fen}\n`);
-          engine.stdin.write(`go movetime ${moveTimeMs}\n`);
-        } else if (line.startsWith('bestmove ')) {
-          clearTimeout(timeout);
-          const move = line.split(' ')[1] ?? null;
-          done(move && move !== '(none)' ? move : null);
-        }
-      }
-    });
-
-    engine.stdin.write('uci\n');
-  });
-}
-
-function nowIso() {
-  return new Date().toISOString();
-}
-
-function nowMs() {
-  return Date.now();
+  chess: Chess;
+  status: 'active' | 'finished';
+  result: { reason: 'checkmate' | 'draw' | 'timeout' | 'resign'; winner: Color | null } | null;
+  timeControl: TimeControl | null;
 }
 
 function opposite(c: Color): Color {
   return c === 'w' ? 'b' : 'w';
 }
 
-export function createGame(input: CreateGameInput = {}): Game {
+export function newGameState(input: {
+  mode?: GameMode;
+  fen?: string;
+  aiColor?: Color;
+  timeControl?: { initialSeconds: number; incrementSeconds?: number };
+}): GameState {
   const chess = new Chess();
   if (input.fen) chess.load(input.fen);
-
-  const id = crypto.randomUUID();
   const turn = chess.turn();
-  const game: Game = {
-    id,
+
+  return {
     mode: input.mode ?? 'pvp',
+    aiColor: (input.mode ?? 'pvp') === 'pve' ? input.aiColor ?? 'b' : null,
     chess,
-    createdAt: nowIso(),
-    updatedAt: nowIso(),
     status: 'active',
+    result: null,
     timeControl: input.timeControl
       ? {
           initialMs: Math.max(1, input.timeControl.initialSeconds) * 1000,
@@ -138,165 +58,178 @@ export function createGame(input: CreateGameInput = {}): Game {
             b: Math.max(1, input.timeControl.initialSeconds) * 1000
           },
           running: turn,
-          lastTickAt: nowMs()
+          lastTickAt: Date.now()
         }
-      : null,
-    aiColor: (input.mode ?? 'pvp') === 'pve' ? input.aiColor ?? 'b' : null
+      : null
   };
-
-  games.set(id, game);
-  return game;
 }
 
-export function getGame(id: string): Game | undefined {
-  return games.get(id);
+export function hydrate(row: {
+  mode: string;
+  aiColor: string | null;
+  fen: string;
+  status: string;
+  resultReason: string | null;
+  resultWinner: string | null;
+  initialMs: number | null;
+  incrementMs: number | null;
+  remainingW: number | null;
+  remainingB: number | null;
+  running: string | null;
+  lastTickAt: number | null;
+}): GameState {
+  const chess = new Chess(row.fen);
+  const timeControl =
+    row.initialMs && row.incrementMs !== null && row.remainingW !== null && row.remainingB !== null && row.running && row.lastTickAt
+      ? {
+          initialMs: row.initialMs,
+          incrementMs: row.incrementMs,
+          remaining: { w: row.remainingW, b: row.remainingB },
+          running: row.running as Color,
+          lastTickAt: row.lastTickAt
+        }
+      : null;
+
+  return {
+    mode: row.mode as GameMode,
+    aiColor: (row.aiColor as Color | null) ?? null,
+    chess,
+    status: row.status as 'active' | 'finished',
+    result: row.resultReason
+      ? { reason: row.resultReason as 'checkmate' | 'draw' | 'timeout' | 'resign', winner: (row.resultWinner as Color | null) ?? null }
+      : null,
+    timeControl
+  };
 }
 
-export function deleteGame(id: string): boolean {
-  return games.delete(id);
+export function serialize(state: GameState) {
+  return {
+    mode: state.mode,
+    aiColor: state.aiColor,
+    fen: state.chess.fen(),
+    pgn: state.chess.pgn(),
+    turn: state.chess.turn(),
+    status: state.status,
+    resultReason: state.result?.reason ?? null,
+    resultWinner: state.result?.winner ?? null,
+    history: state.chess.history({ verbose: true }),
+    initialMs: state.timeControl?.initialMs ?? null,
+    incrementMs: state.timeControl?.incrementMs ?? null,
+    remainingW: state.timeControl?.remaining.w ?? null,
+    remainingB: state.timeControl?.remaining.b ?? null,
+    running: state.timeControl?.running ?? null,
+    lastTickAt: state.timeControl?.lastTickAt ?? null
+  };
 }
 
-function finishIfGameOver(game: Game) {
-  if (!game.chess.isGameOver()) return;
-
-  game.status = 'finished';
-  if (game.chess.isCheckmate()) {
-    game.result = { reason: 'checkmate', winner: opposite(game.chess.turn()) };
+function finishIfGameOver(state: GameState) {
+  if (!state.chess.isGameOver()) return;
+  state.status = 'finished';
+  if (state.chess.isCheckmate()) {
+    state.result = { reason: 'checkmate', winner: opposite(state.chess.turn()) };
     return;
   }
-
-  game.result = { reason: 'draw', winner: null };
+  state.result = { reason: 'draw', winner: null };
 }
 
-function applyClockTick(game: Game) {
-  if (!game.timeControl || game.status !== 'active') return;
+export function tick(state: GameState) {
+  if (!state.timeControl || state.status !== 'active') return;
+  const now = Date.now();
+  const elapsed = Math.max(0, now - state.timeControl.lastTickAt);
+  state.timeControl.remaining[state.timeControl.running] = Math.max(
+    0,
+    state.timeControl.remaining[state.timeControl.running] - elapsed
+  );
+  state.timeControl.lastTickAt = now;
 
-  const tc = game.timeControl;
-  const now = nowMs();
-  const elapsed = Math.max(0, now - tc.lastTickAt);
-  tc.remaining[tc.running] = Math.max(0, tc.remaining[tc.running] - elapsed);
-  tc.lastTickAt = now;
-
-  if (tc.remaining[tc.running] <= 0) {
-    game.status = 'finished';
-    game.result = { reason: 'timeout', winner: opposite(tc.running) };
+  if (state.timeControl.remaining[state.timeControl.running] <= 0) {
+    state.status = 'finished';
+    state.result = { reason: 'timeout', winner: opposite(state.timeControl.running) };
   }
 }
 
-function afterMove(game: Game, mover: Color) {
-  if (game.timeControl) {
-    const tc = game.timeControl;
-    tc.remaining[mover] += tc.incrementMs;
-    tc.running = game.chess.turn();
-    tc.lastTickAt = nowMs();
+function afterMove(state: GameState, mover: Color) {
+  if (state.timeControl) {
+    state.timeControl.remaining[mover] += state.timeControl.incrementMs;
+    state.timeControl.running = state.chess.turn();
+    state.timeControl.lastTickAt = Date.now();
   }
-
-  finishIfGameOver(game);
-  game.updatedAt = nowIso();
+  finishIfGameOver(state);
 }
 
-export function legalMoves(game: Game, from?: string) {
-  applyClockTick(game);
-  if (game.status !== 'active') return [];
-
-  if (from) return game.chess.moves({ square: from as Square });
-  return game.chess.moves();
+export function legalMoves(state: GameState, from?: string) {
+  tick(state);
+  if (state.status !== 'active') return [] as string[];
+  return from ? state.chess.moves({ square: from as Square }) : state.chess.moves();
 }
 
-export function makeMove(
-  game: Game,
-  payload: { san?: string; from?: string; to?: string; promotion?: 'q' | 'r' | 'b' | 'n' }
-) {
-  applyClockTick(game);
-  if (game.status !== 'active') return { error: 'Game is already finished' } as const;
+export function makeMove(state: GameState, payload: { san?: string; from?: string; to?: string; promotion?: 'q' | 'r' | 'b' | 'n' }) {
+  tick(state);
+  if (state.status !== 'active') return { error: 'Game is already finished' } as const;
 
-  const mover = game.chess.turn();
+  const mover = state.chess.turn();
   const move = payload.san
-    ? game.chess.move(payload.san)
+    ? state.chess.move(payload.san)
     : payload.from && payload.to
-      ? game.chess.move({ from: payload.from, to: payload.to, promotion: payload.promotion ?? 'q' })
+      ? state.chess.move({ from: payload.from, to: payload.to, promotion: payload.promotion ?? 'q' })
       : null;
 
   if (!move) return { error: 'Illegal move' } as const;
-
-  afterMove(game, mover);
+  afterMove(state, mover);
   return { move } as const;
 }
 
-export async function aiMove(game: Game) {
-  applyClockTick(game);
-  if (game.status !== 'active') return { error: 'Game is already finished' } as const;
-  if (game.mode !== 'pve') return { error: 'AI move only supported for pve games' } as const;
-  if (game.aiColor !== game.chess.turn()) return { error: 'Not AI turn' } as const;
+export async function aiMove(state: GameState) {
+  tick(state);
+  if (state.status !== 'active') return { error: 'Game is already finished' } as const;
+  if (state.mode !== 'pve') return { error: 'AI move only supported for pve games' } as const;
+  if (state.aiColor !== state.chess.turn()) return { error: 'Not AI turn' } as const;
 
-  const mover = game.chess.turn();
-  const moves = game.chess.moves();
-  if (!moves.length) {
-    finishIfGameOver(game);
-    return { error: 'No legal AI moves' } as const;
+  const mover = state.chess.turn();
+  const legal = state.chess.moves();
+  if (!legal.length) return { error: 'No legal AI moves' } as const;
+
+  let move = null as ReturnType<Chess['move']> | null;
+  try {
+    const san = chessAI.play(state.chess.history());
+    move = state.chess.move(san);
+  } catch {
+    move = null;
   }
 
-  let move: ReturnType<Chess['move']> | null = null;
-
-  // Preferred engine: Stockfish (UCI)
-  const uciMove = await getStockfishBestMove(game.chess.fen());
-  if (uciMove && uciMove.length >= 4) {
-    const from = uciMove.slice(0, 2);
-    const to = uciMove.slice(2, 4);
-    const promotion = (uciMove.slice(4, 5) || undefined) as 'q' | 'r' | 'b' | 'n' | undefined;
-    move = game.chess.move({ from, to, promotion });
-  }
-
-  // Fallback: legacy kong engine
   if (!move) {
-    try {
-      const history = game.chess.history();
-      const san = chessAI.play(history);
-      move = game.chess.move(san);
-    } catch {
-      move = null;
-    }
-  }
-
-  // Final fallback: random legal move
-  if (!move) {
-    const pick = moves[Math.floor(Math.random() * moves.length)]!;
-    move = game.chess.move(pick);
+    const pick = legal[Math.floor(Math.random() * legal.length)]!;
+    move = state.chess.move(pick);
   }
 
   if (!move) return { error: 'AI failed to move' } as const;
-
-  afterMove(game, mover);
+  afterMove(state, mover);
   return { move } as const;
 }
 
-export function resign(game: Game, color: Color) {
-  if (game.status !== 'active') return;
-  game.status = 'finished';
-  game.result = { reason: 'resign', winner: opposite(color) };
-  game.updatedAt = nowIso();
+export function resign(state: GameState, color: Color) {
+  if (state.status !== 'active') return;
+  state.status = 'finished';
+  state.result = { reason: 'resign', winner: opposite(color) };
 }
 
-export function state(game: Game) {
-  applyClockTick(game);
+export function present(id: string, state: GameState) {
+  tick(state);
   return {
-    id: game.id,
-    mode: game.mode,
-    status: game.status,
-    result: game.result ?? null,
-    createdAt: game.createdAt,
-    updatedAt: game.updatedAt,
-    fen: game.chess.fen(),
-    pgn: game.chess.pgn(),
-    turn: game.chess.turn(),
-    legalMoveCount: game.chess.moves().length,
-    history: game.chess.history({ verbose: true }),
-    timeControl: game.timeControl
+    id,
+    mode: state.mode,
+    status: state.status,
+    result: state.result,
+    fen: state.chess.fen(),
+    pgn: state.chess.pgn(),
+    turn: state.chess.turn(),
+    history: state.chess.history({ verbose: true }),
+    timeControl: state.timeControl
       ? {
-          initialMs: game.timeControl.initialMs,
-          incrementMs: game.timeControl.incrementMs,
-          remaining: game.timeControl.remaining,
-          running: game.timeControl.running
+          initialMs: state.timeControl.initialMs,
+          incrementMs: state.timeControl.incrementMs,
+          remaining: state.timeControl.remaining,
+          running: state.timeControl.running
         }
       : null
   };
