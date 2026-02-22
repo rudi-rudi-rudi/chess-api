@@ -1,7 +1,16 @@
-import { Chess } from 'chess.js';
+import { Chess, type Square } from 'chess.js';
 import crypto from 'node:crypto';
 
 export type GameMode = 'pvp' | 'pve';
+export type Color = 'w' | 'b';
+
+export interface TimeControl {
+  initialMs: number;
+  incrementMs: number;
+  remaining: Record<Color, number>;
+  running: Color;
+  lastTickAt: number;
+}
 
 export interface Game {
   id: string;
@@ -9,21 +18,65 @@ export interface Game {
   chess: Chess;
   createdAt: string;
   updatedAt: string;
+  status: 'active' | 'finished';
+  result?: {
+    reason: 'checkmate' | 'draw' | 'timeout' | 'resign';
+    winner: Color | null;
+  };
+  timeControl: TimeControl | null;
+  aiColor: Color | null;
+}
+
+export interface CreateGameInput {
+  fen?: string;
+  mode?: GameMode;
+  aiColor?: Color;
+  timeControl?: {
+    initialSeconds: number;
+    incrementSeconds?: number;
+  };
 }
 
 const games = new Map<string, Game>();
 
-export function createGame({ fen, mode = 'pvp' }: { fen?: string; mode?: GameMode } = {}): Game {
+function nowIso() {
+  return new Date().toISOString();
+}
+
+function nowMs() {
+  return Date.now();
+}
+
+function opposite(c: Color): Color {
+  return c === 'w' ? 'b' : 'w';
+}
+
+export function createGame(input: CreateGameInput = {}): Game {
   const chess = new Chess();
-  if (fen) chess.load(fen);
+  if (input.fen) chess.load(input.fen);
 
   const id = crypto.randomUUID();
+  const turn = chess.turn();
   const game: Game = {
     id,
-    mode,
+    mode: input.mode ?? 'pvp',
     chess,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
+    createdAt: nowIso(),
+    updatedAt: nowIso(),
+    status: 'active',
+    timeControl: input.timeControl
+      ? {
+          initialMs: Math.max(1, input.timeControl.initialSeconds) * 1000,
+          incrementMs: Math.max(0, input.timeControl.incrementSeconds ?? 0) * 1000,
+          remaining: {
+            w: Math.max(1, input.timeControl.initialSeconds) * 1000,
+            b: Math.max(1, input.timeControl.initialSeconds) * 1000
+          },
+          running: turn,
+          lastTickAt: nowMs()
+        }
+      : null,
+    aiColor: (input.mode ?? 'pvp') === 'pve' ? input.aiColor ?? 'b' : null
   };
 
   games.set(id, game);
@@ -34,21 +87,126 @@ export function getGame(id: string): Game | undefined {
   return games.get(id);
 }
 
-export function toState(game: Game) {
-  const { chess, id, mode, createdAt, updatedAt } = game;
+export function deleteGame(id: string): boolean {
+  return games.delete(id);
+}
+
+function finishIfGameOver(game: Game) {
+  if (!game.chess.isGameOver()) return;
+
+  game.status = 'finished';
+  if (game.chess.isCheckmate()) {
+    game.result = { reason: 'checkmate', winner: opposite(game.chess.turn()) };
+    return;
+  }
+
+  game.result = { reason: 'draw', winner: null };
+}
+
+function applyClockTick(game: Game) {
+  if (!game.timeControl || game.status !== 'active') return;
+
+  const tc = game.timeControl;
+  const now = nowMs();
+  const elapsed = Math.max(0, now - tc.lastTickAt);
+  tc.remaining[tc.running] = Math.max(0, tc.remaining[tc.running] - elapsed);
+  tc.lastTickAt = now;
+
+  if (tc.remaining[tc.running] <= 0) {
+    game.status = 'finished';
+    game.result = { reason: 'timeout', winner: opposite(tc.running) };
+  }
+}
+
+function afterMove(game: Game, mover: Color) {
+  if (game.timeControl) {
+    const tc = game.timeControl;
+    tc.remaining[mover] += tc.incrementMs;
+    tc.running = game.chess.turn();
+    tc.lastTickAt = nowMs();
+  }
+
+  finishIfGameOver(game);
+  game.updatedAt = nowIso();
+}
+
+export function legalMoves(game: Game, from?: string) {
+  applyClockTick(game);
+  if (game.status !== 'active') return [];
+
+  if (from) return game.chess.moves({ square: from as Square });
+  return game.chess.moves();
+}
+
+export function makeMove(
+  game: Game,
+  payload: { san?: string; from?: string; to?: string; promotion?: 'q' | 'r' | 'b' | 'n' }
+) {
+  applyClockTick(game);
+  if (game.status !== 'active') return { error: 'Game is already finished' } as const;
+
+  const mover = game.chess.turn();
+  const move = payload.san
+    ? game.chess.move(payload.san)
+    : payload.from && payload.to
+      ? game.chess.move({ from: payload.from, to: payload.to, promotion: payload.promotion ?? 'q' })
+      : null;
+
+  if (!move) return { error: 'Illegal move' } as const;
+
+  afterMove(game, mover);
+  return { move } as const;
+}
+
+export function aiMove(game: Game) {
+  applyClockTick(game);
+  if (game.status !== 'active') return { error: 'Game is already finished' } as const;
+  if (game.mode !== 'pve') return { error: 'AI move only supported for pve games' } as const;
+  if (game.aiColor !== game.chess.turn()) return { error: 'Not AI turn' } as const;
+
+  const mover = game.chess.turn();
+  const moves = game.chess.moves();
+  if (!moves.length) {
+    finishIfGameOver(game);
+    return { error: 'No legal AI moves' } as const;
+  }
+
+  const pick = moves[Math.floor(Math.random() * moves.length)]!;
+  const move = game.chess.move(pick);
+  if (!move) return { error: 'AI failed to move' } as const;
+
+  afterMove(game, mover);
+  return { move } as const;
+}
+
+export function resign(game: Game, color: Color) {
+  if (game.status !== 'active') return;
+  game.status = 'finished';
+  game.result = { reason: 'resign', winner: opposite(color) };
+  game.updatedAt = nowIso();
+}
+
+export function state(game: Game) {
+  applyClockTick(game);
   return {
-    id,
-    mode,
-    createdAt,
-    updatedAt,
-    fen: chess.fen(),
-    pgn: chess.pgn(),
-    turn: chess.turn(),
-    isGameOver: chess.isGameOver(),
-    isCheckmate: chess.isCheckmate(),
-    isDraw: chess.isDraw(),
-    isStalemate: chess.isStalemate(),
-    isThreefoldRepetition: chess.isThreefoldRepetition(),
-    history: chess.history({ verbose: true })
+    id: game.id,
+    mode: game.mode,
+    status: game.status,
+    result: game.result ?? null,
+    createdAt: game.createdAt,
+    updatedAt: game.updatedAt,
+    fen: game.chess.fen(),
+    pgn: game.chess.pgn(),
+    turn: game.chess.turn(),
+    legalMoveCount: game.chess.moves().length,
+    history: game.chess.history({ verbose: true }),
+    timeControl: game.timeControl
+      ? {
+          initialMs: game.timeControl.initialMs,
+          incrementMs: game.timeControl.incrementMs,
+          remaining: game.timeControl.remaining,
+          running: game.timeControl.running
+        }
+      : null
   };
 }

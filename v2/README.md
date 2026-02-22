@@ -1,13 +1,13 @@
-# chess-api v2 (alpha)
+# chess-api v2 (TypeScript)
 
-Modern rewrite of `anzemur/chess-api`.
+Modern general-purpose chess API rewrite.
 
-## Why v2
+## Goals
 
-- cleaner resource model (`/v2/games`)
-- modern runtime (Node + Fastify + chess.js 1.x)
-- explicit game state payloads
-- easier to extend for auth, persistence, multiplayer rooms, ratings
+- clean, minimal routes for external users
+- player-vs-player and player-vs-engine support
+- timed games with clocks + increment
+- easy path to persistence/auth later
 
 ## Run
 
@@ -17,18 +17,28 @@ npm install
 npm run dev
 ```
 
-## API
+## Core API
 
 ### Create game
 `POST /v2/games`
 
-Body (optional):
+Example body:
 ```json
-{ "mode": "pvp", "fen": "..." }
+{
+  "mode": "pve",
+  "aiColor": "b",
+  "timeControl": {
+    "initialSeconds": 300,
+    "incrementSeconds": 2
+  }
+}
 ```
 
-### Get state
+### Get game state
 `GET /v2/games/:id`
+
+### Delete game
+`DELETE /v2/games/:id`
 
 ### List legal moves
 `GET /v2/games/:id/moves`
@@ -37,19 +47,35 @@ Body (optional):
 ### Make move
 `POST /v2/games/:id/moves`
 
-Body:
+Body (one of):
 ```json
 { "from": "e2", "to": "e4" }
 ```
-or
 ```json
 { "san": "Nf3" }
 ```
 
-## Next steps to ship beta
+### Ask engine to move (pve mode)
+`POST /v2/games/:id/ai-move`
 
-1. persistence (Redis/Postgres)
-2. auth + rate limiting
-3. one-player engine endpoint
-4. tests + OpenAPI + CI
-5. migration shim from v1 routes
+### Resign
+`POST /v2/games/:id/resign`
+
+```json
+{ "color": "w" }
+```
+
+## Time controls
+
+When enabled, each game tracks:
+- white and black remaining time
+- running side clock
+- increment per move
+- timeout result when a clock reaches 0
+
+## Next
+
+- add persistence (Redis/Postgres)
+- add OpenAPI schema + validation
+- add tests + CI
+- add stronger chess engine for pve mode

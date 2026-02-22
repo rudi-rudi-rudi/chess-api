@@ -1,61 +1,85 @@
 import Fastify from 'fastify';
-import { createGame, getGame, toState } from './store.js';
+import { aiMove, createGame, deleteGame, getGame, legalMoves, makeMove, resign, state } from './store.js';
 const app = Fastify({ logger: true });
-app.get('/', async () => ({
-    ok: true,
-    service: 'chess-api-v2',
-    docs: '/v2'
-}));
+app.get('/', async () => ({ ok: true, service: 'chess-api-v2', docs: '/v2' }));
 app.get('/v2', async () => ({
-    message: 'chess-api v2',
+    message: 'General Chess API v2',
     endpoints: [
         'POST /v2/games',
         'GET /v2/games/:id',
+        'DELETE /v2/games/:id',
+        'GET /v2/games/:id/moves?from=e2',
         'POST /v2/games/:id/moves',
-        'GET /v2/games/:id/moves?from=e2'
+        'POST /v2/games/:id/ai-move',
+        'POST /v2/games/:id/resign'
     ]
 }));
 app.post('/v2/games', async (req, reply) => {
     const body = (req.body ?? {});
-    const game = createGame({ fen: body.fen, mode: body.mode ?? 'pvp' });
+    const game = createGame({
+        mode: body.mode ?? 'pvp',
+        fen: body.fen,
+        aiColor: body.aiColor,
+        timeControl: body.timeControl
+    });
     reply.code(201);
-    return toState(game);
+    return state(game);
 });
 app.get('/v2/games/:id', async (req, reply) => {
-    const params = req.params;
-    const game = getGame(params.id);
+    const { id } = req.params;
+    const game = getGame(id);
     if (!game)
         return reply.code(404).send({ error: 'Game not found' });
-    return toState(game);
+    return state(game);
+});
+app.delete('/v2/games/:id', async (req, reply) => {
+    const { id } = req.params;
+    const ok = deleteGame(id);
+    if (!ok)
+        return reply.code(404).send({ error: 'Game not found' });
+    return reply.code(204).send();
 });
 app.get('/v2/games/:id/moves', async (req, reply) => {
-    const params = req.params;
-    const query = (req.query ?? {});
-    const game = getGame(params.id);
+    const { id } = req.params;
+    const { from } = (req.query ?? {});
+    const game = getGame(id);
     if (!game)
         return reply.code(404).send({ error: 'Game not found' });
-    const moves = query.from
-        ? game.chess.moves({ square: query.from })
-        : game.chess.moves();
-    return { gameId: game.id, count: moves.length, moves };
+    const moves = legalMoves(game, from);
+    return { gameId: id, from: from ?? null, count: moves.length, moves };
 });
 app.post('/v2/games/:id/moves', async (req, reply) => {
-    const params = req.params;
+    const { id } = req.params;
     const body = (req.body ?? {});
-    const game = getGame(params.id);
+    const game = getGame(id);
     if (!game)
         return reply.code(404).send({ error: 'Game not found' });
-    const { from, to, promotion = 'q', san } = body;
-    if (!san && (!from || !to)) {
-        return reply.code(400).send({ error: 'Provide san OR from+to' });
+    const result = makeMove(game, body);
+    if ('error' in result)
+        return reply.code(422).send(result);
+    return { move: result.move, state: state(game) };
+});
+app.post('/v2/games/:id/ai-move', async (req, reply) => {
+    const { id } = req.params;
+    const game = getGame(id);
+    if (!game)
+        return reply.code(404).send({ error: 'Game not found' });
+    const result = aiMove(game);
+    if ('error' in result)
+        return reply.code(422).send(result);
+    return { move: result.move, state: state(game) };
+});
+app.post('/v2/games/:id/resign', async (req, reply) => {
+    const { id } = req.params;
+    const body = (req.body ?? {});
+    const game = getGame(id);
+    if (!game)
+        return reply.code(404).send({ error: 'Game not found' });
+    if (!body.color || !['w', 'b'].includes(body.color)) {
+        return reply.code(400).send({ error: 'color must be w or b' });
     }
-    const move = san
-        ? game.chess.move(san)
-        : game.chess.move({ from: from, to: to, promotion: promotion });
-    if (!move)
-        return reply.code(422).send({ error: 'Illegal move' });
-    game.updatedAt = new Date().toISOString();
-    return { move, state: toState(game) };
+    resign(game, body.color);
+    return state(game);
 });
 const port = Number(process.env.PORT || 3000);
 app.listen({ port, host: '0.0.0.0' }).then(() => {
