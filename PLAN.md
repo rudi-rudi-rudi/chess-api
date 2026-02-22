@@ -20,8 +20,8 @@ Ship a production-ready SaaS chess API where users can sign in, create API keys,
 - [x] Stripe customer creation on first paid action
 - [x] Checkout session endpoint
 - [x] Billing portal endpoint
-- [ ] Webhook handler (subscription created/updated/canceled)
-- [ ] Persist plan tier/status in `plans`
+- [x] Webhook handler (subscription created/updated/canceled)
+- [x] Persist plan tier/status in `plans`
 - [ ] Enforce plan limits:
   - [ ] free: low RPM + low monthly requests + key cap
   - [ ] pro: higher quotas

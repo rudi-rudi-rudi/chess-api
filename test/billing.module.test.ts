@@ -103,3 +103,46 @@ test('billing service creates portal session', async () => {
   const out = await billing.createBillingPortalSession({ userId: 'u1', email: 'u1@example.com' });
   assert.ok(out.url.includes('billing.stripe.test'));
 });
+
+test('billing service handles subscription updated webhook and upgrades plan', async () => {
+  const mock = makeDbMock({ stripeCustomerId: 'cus_existing', tier: 'free', status: 'active' });
+  const billing = new BillingService(mock as any);
+
+  const event: any = {
+    type: 'customer.subscription.updated',
+    data: {
+      object: {
+        id: 'sub_123',
+        customer: 'cus_existing',
+        status: 'active',
+        metadata: { userId: 'u1' },
+      },
+    },
+  };
+
+  const out = await billing.handleWebhook(event);
+  assert.equal(out.received, true);
+  assert.equal(mock.calls.updated.tier, 'pro');
+  assert.equal(mock.calls.updated.stripeSubscriptionId, 'sub_123');
+});
+
+test('billing service handles subscription deleted webhook and downgrades plan', async () => {
+  const mock = makeDbMock({ stripeCustomerId: 'cus_existing', tier: 'pro', status: 'active' });
+  const billing = new BillingService(mock as any);
+
+  const event: any = {
+    type: 'customer.subscription.deleted',
+    data: {
+      object: {
+        id: 'sub_123',
+        customer: 'cus_existing',
+        status: 'canceled',
+        metadata: { userId: 'u1' },
+      },
+    },
+  };
+
+  await billing.handleWebhook(event);
+  assert.equal(mock.calls.updated.tier, 'free');
+  assert.equal(mock.calls.updated.status, 'canceled');
+});

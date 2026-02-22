@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, ServiceUnavailableException } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
+import { eq, or } from 'drizzle-orm';
 import Stripe from 'stripe';
 import { DatabaseService } from '../../database/database.service.js';
 import { plans } from '../../database/schema.js';
@@ -103,5 +103,47 @@ export class BillingService {
     return {
       url: session.url,
     };
+  }
+
+  async handleWebhook(body: unknown, stripeSignature?: string) {
+    const event = this.parseWebhookEvent(body, stripeSignature);
+
+    if (
+      event.type === 'customer.subscription.created' ||
+      event.type === 'customer.subscription.updated' ||
+      event.type === 'customer.subscription.deleted'
+    ) {
+      await this.applySubscriptionEvent(event.data.object as Stripe.Subscription);
+    }
+
+    return { received: true };
+  }
+
+  private parseWebhookEvent(body: unknown, stripeSignature?: string): Stripe.Event {
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+    if (webhookSecret && stripeSignature) {
+      const payload = typeof body === 'string' ? body : JSON.stringify(body ?? {});
+      return this.getStripeClient().webhooks.constructEvent(payload, stripeSignature, webhookSecret);
+    }
+
+    return body as Stripe.Event;
+  }
+
+  private async applySubscriptionEvent(subscription: Stripe.Subscription) {
+    const customerId = typeof subscription.customer === 'string' ? subscription.customer : subscription.customer?.id;
+    if (!customerId) return;
+
+    const isActive = subscription.status === 'active' || subscription.status === 'trialing';
+    await this.dbs.db
+      .update(plans)
+      .set({
+        tier: isActive ? 'pro' : 'free',
+        status: subscription.status,
+        stripeCustomerId: customerId,
+        stripeSubscriptionId: subscription.id,
+        updatedAt: new Date(),
+      })
+      .where(or(eq(plans.stripeCustomerId, customerId), eq(plans.userId, subscription.metadata?.userId || '')));
   }
 }
