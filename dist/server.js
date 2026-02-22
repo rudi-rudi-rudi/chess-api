@@ -1,20 +1,20 @@
 import Fastify from 'fastify';
 import { aiMove, createGame, deleteGame, getGame, legalMoves, makeMove, resign, state } from './store.js';
 const app = Fastify({ logger: true });
-app.get('/', async () => ({ ok: true, service: 'chess-api-v2', docs: '/v2' }));
-app.get('/v2', async () => ({
-    message: 'General Chess API v2',
+app.get('/', async () => ({ ok: true, service: 'chess-api', docs: '/api' }));
+app.get('/api', async () => ({
+    message: 'General Chess API',
     endpoints: [
-        'POST /v2/games',
-        'GET /v2/games/:id',
-        'DELETE /v2/games/:id',
-        'GET /v2/games/:id/moves?from=e2',
-        'POST /v2/games/:id/moves',
-        'POST /v2/games/:id/ai-move',
-        'POST /v2/games/:id/resign'
+        'POST /games',
+        'GET /games/:id',
+        'DELETE /games/:id',
+        'GET /games/:id/moves?from=e2',
+        'POST /games/:id/moves',
+        'POST /games/:id/ai-move',
+        'POST /games/:id/resign'
     ]
 }));
-app.post('/v2/games', async (req, reply) => {
+app.post('/games', async (req, reply) => {
     const body = (req.body ?? {});
     const game = createGame({
         mode: body.mode ?? 'pvp',
@@ -25,21 +25,21 @@ app.post('/v2/games', async (req, reply) => {
     reply.code(201);
     return state(game);
 });
-app.get('/v2/games/:id', async (req, reply) => {
+app.get('/games/:id', async (req, reply) => {
     const { id } = req.params;
     const game = getGame(id);
     if (!game)
         return reply.code(404).send({ error: 'Game not found' });
     return state(game);
 });
-app.delete('/v2/games/:id', async (req, reply) => {
+app.delete('/games/:id', async (req, reply) => {
     const { id } = req.params;
     const ok = deleteGame(id);
     if (!ok)
         return reply.code(404).send({ error: 'Game not found' });
     return reply.code(204).send();
 });
-app.get('/v2/games/:id/moves', async (req, reply) => {
+app.get('/games/:id/moves', async (req, reply) => {
     const { id } = req.params;
     const { from } = (req.query ?? {});
     const game = getGame(id);
@@ -48,7 +48,7 @@ app.get('/v2/games/:id/moves', async (req, reply) => {
     const moves = legalMoves(game, from);
     return { gameId: id, from: from ?? null, count: moves.length, moves };
 });
-app.post('/v2/games/:id/moves', async (req, reply) => {
+app.post('/games/:id/moves', async (req, reply) => {
     const { id } = req.params;
     const body = (req.body ?? {});
     const game = getGame(id);
@@ -59,7 +59,7 @@ app.post('/v2/games/:id/moves', async (req, reply) => {
         return reply.code(422).send(result);
     return { move: result.move, state: state(game) };
 });
-app.post('/v2/games/:id/ai-move', async (req, reply) => {
+app.post('/games/:id/ai-move', async (req, reply) => {
     const { id } = req.params;
     const game = getGame(id);
     if (!game)
@@ -69,7 +69,7 @@ app.post('/v2/games/:id/ai-move', async (req, reply) => {
         return reply.code(422).send(result);
     return { move: result.move, state: state(game) };
 });
-app.post('/v2/games/:id/resign', async (req, reply) => {
+app.post('/games/:id/resign', async (req, reply) => {
     const { id } = req.params;
     const body = (req.body ?? {});
     const game = getGame(id);
@@ -83,5 +83,5 @@ app.post('/v2/games/:id/resign', async (req, reply) => {
 });
 const port = Number(process.env.PORT || 3000);
 app.listen({ port, host: '0.0.0.0' }).then(() => {
-    app.log.info(`chess-api-v2 listening on ${port}`);
+    app.log.info(`chess-api listening on ${port}`);
 });

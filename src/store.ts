@@ -1,5 +1,6 @@
 import { Chess, type Square } from 'chess.js';
 import crypto from 'node:crypto';
+import { createRequire } from 'node:module';
 
 export type GameMode = 'pvp' | 'pve';
 export type Color = 'w' | 'b';
@@ -38,6 +39,20 @@ export interface CreateGameInput {
 }
 
 const games = new Map<string, Game>();
+
+const require = createRequire(import.meta.url);
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const chessAI: {
+  play: (history: string[]) => string;
+  setOptions: (opts: { depth?: number; monitor?: boolean; strategy?: string; timeout?: number }) => void;
+} = require('chess-ai-kong');
+
+chessAI.setOptions({
+  depth: 3,
+  monitor: false,
+  strategy: 'basic',
+  timeout: 5000
+});
 
 function nowIso() {
   return new Date().toISOString();
@@ -171,8 +186,20 @@ export function aiMove(game: Game) {
     return { error: 'No legal AI moves' } as const;
   }
 
-  const pick = moves[Math.floor(Math.random() * moves.length)]!;
-  const move = game.chess.move(pick);
+  let move: ReturnType<Chess['move']> | null = null;
+  try {
+    const history = game.chess.history();
+    const san = chessAI.play(history);
+    move = game.chess.move(san);
+  } catch {
+    move = null;
+  }
+
+  if (!move) {
+    const pick = moves[Math.floor(Math.random() * moves.length)]!;
+    move = game.chess.move(pick);
+  }
+
   if (!move) return { error: 'AI failed to move' } as const;
 
   afterMove(game, mover);

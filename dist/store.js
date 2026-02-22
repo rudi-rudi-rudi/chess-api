@@ -1,6 +1,16 @@
 import { Chess } from 'chess.js';
 import crypto from 'node:crypto';
+import { createRequire } from 'node:module';
 const games = new Map();
+const require = createRequire(import.meta.url);
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const chessAI = require('chess-ai-kong');
+chessAI.setOptions({
+    depth: 3,
+    monitor: false,
+    strategy: 'basic',
+    timeout: 5000
+});
 function nowIso() {
     return new Date().toISOString();
 }
@@ -116,8 +126,19 @@ export function aiMove(game) {
         finishIfGameOver(game);
         return { error: 'No legal AI moves' };
     }
-    const pick = moves[Math.floor(Math.random() * moves.length)];
-    const move = game.chess.move(pick);
+    let move = null;
+    try {
+        const history = game.chess.history();
+        const san = chessAI.play(history);
+        move = game.chess.move(san);
+    }
+    catch {
+        move = null;
+    }
+    if (!move) {
+        const pick = moves[Math.floor(Math.random() * moves.length)];
+        move = game.chess.move(pick);
+    }
     if (!move)
         return { error: 'AI failed to move' };
     afterMove(game, mover);

@@ -1,9 +1,9 @@
 {
-  "name": "chess-api-v2",
+  "name": "chess-api",
   "version": "2.0.0-alpha.1",
   "private": true,
   "type": "module",
-  "description": "Modern rewrite of chess-api",
+  "description": "General chess API (TypeScript)",
   "scripts": {
     "dev": "tsx src/server.ts",
     "build": "tsc -p tsconfig.json",
@@ -11,7 +11,8 @@
   },
   "dependencies": {
     "chess.js": "^1.4.0",
-    "fastify": "^5.0.0"
+    "fastify": "^5.0.0",
+    "chess-ai-kong": "^0.3.3"
   },
   "devDependencies": {
     "typescript": "^5.7.3",

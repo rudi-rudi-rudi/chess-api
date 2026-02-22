@@ -1,28 +1,29 @@
-# chess-api v2 (TypeScript)
+# ♟️ chess-api
 
-Modern general-purpose chess API rewrite.
+General-purpose Chess API for external users.
 
-## Goals
-
-- clean, minimal routes for external users
-- player-vs-player and player-vs-engine support
-- timed games with clocks + increment
-- easy path to persistence/auth later
+- Player vs Player (`pvp`)
+- Player vs Engine (`pve`)
+- Timed games (initial time + increment)
+- Clean game-centric routes
 
 ## Run
 
 ```bash
-cd v2
 npm install
 npm run dev
 ```
 
-## Core API
+## API
+
+### Health
+- `GET /`
+- `GET /api`
 
 ### Create game
-`POST /v2/games`
+`POST /games`
 
-Example body:
+Example:
 ```json
 {
   "mode": "pve",
@@ -35,47 +36,32 @@ Example body:
 ```
 
 ### Get game state
-`GET /v2/games/:id`
+`GET /games/:id`
 
 ### Delete game
-`DELETE /v2/games/:id`
+`DELETE /games/:id`
 
 ### List legal moves
-`GET /v2/games/:id/moves`
-`GET /v2/games/:id/moves?from=e2`
+- `GET /games/:id/moves`
+- `GET /games/:id/moves?from=e2`
 
 ### Make move
-`POST /v2/games/:id/moves`
+`POST /games/:id/moves`
 
-Body (one of):
 ```json
 { "from": "e2", "to": "e4" }
 ```
+or
 ```json
 { "san": "Nf3" }
 ```
 
-### Ask engine to move (pve mode)
-`POST /v2/games/:id/ai-move`
+### Engine move (uses chess-ai-kong)
+`POST /games/:id/ai-move`
 
 ### Resign
-`POST /v2/games/:id/resign`
+`POST /games/:id/resign`
 
 ```json
 { "color": "w" }
 ```
-
-## Time controls
-
-When enabled, each game tracks:
-- white and black remaining time
-- running side clock
-- increment per move
-- timeout result when a clock reaches 0
-
-## Next
-
-- add persistence (Redis/Postgres)
-- add OpenAPI schema + validation
-- add tests + CI
-- add stronger chess engine for pve mode
