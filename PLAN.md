@@ -28,7 +28,7 @@ Ship a production-ready SaaS chess API where users can sign in, create API keys,
 
 ### 2) Production API hardening
 - [x] Centralized exception filter + error shape
-- [ ] Request logging middleware with requestId
+- [x] Request logging middleware with requestId
 - [ ] API key rate limit per key (not only global)
 - [ ] Pagination DTOs + list endpoints:
   - [ ] `GET /games` with filters/status/mode
