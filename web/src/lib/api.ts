@@ -24,6 +24,14 @@ export async function me(accessToken: string) {
   return res.json()
 }
 
+export async function getPlan(accessToken: string) {
+  const res = await fetch(`${API_BASE}/me/plan`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  })
+  if (!res.ok) throw new Error(`Failed to load plan (${res.status})`)
+  return res.json() as Promise<{ plan: { tier: string; status: string } }>
+}
+
 export async function listApiKeys(accessToken: string) {
   const res = await fetch(`${API_BASE}/me/api-keys`, {
     headers: { Authorization: `Bearer ${accessToken}` },

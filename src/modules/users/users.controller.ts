@@ -13,6 +13,11 @@ export class UsersController {
     return { user: req.user };
   }
 
+  @Get('plan')
+  async plan(@Req() req: any) {
+    return { plan: await this.users.getPlan(req.user.id) };
+  }
+
   @Get('api-keys')
   async list(@Req() req: any) {
     return { items: await this.users.listApiKeys(req.user.id) };

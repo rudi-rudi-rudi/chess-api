@@ -6,7 +6,7 @@ import { Nav } from '@/components/nav'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { clearToken, getToken } from '@/lib/auth-store'
-import { createApiKey, listApiKeys, me, revokeApiKey } from '@/lib/api'
+import { createApiKey, getPlan, listApiKeys, me, revokeApiKey } from '@/lib/api'
 
 type ApiKey = { id: string; name: string; keyPrefix: string; active: boolean; lastUsedAt?: string | null }
 
@@ -15,15 +15,17 @@ export default function DashboardPage() {
   const [user, setUser] = useState<any>(null)
   const [keys, setKeys] = useState<ApiKey[]>([])
   const [newKey, setNewKey] = useState<string | null>(null)
+  const [plan, setPlan] = useState<{ tier: string; status: string } | null>(null)
   const [name, setName] = useState('default')
   const [loading, setLoading] = useState(true)
   const token = useMemo(() => getToken(), [])
 
   async function refresh() {
     if (!token) return
-    const [u, k] = await Promise.all([me(token), listApiKeys(token)])
+    const [u, k, p] = await Promise.all([me(token), listApiKeys(token), getPlan(token)])
     setUser(u.user)
     setKeys(k.items)
+    setPlan(p.plan)
   }
 
   useEffect(() => {
@@ -55,6 +57,11 @@ export default function DashboardPage() {
         <h1 className="text-3xl font-bold">API Dashboard</h1>
         <p className="mt-2 text-muted-foreground">
           Signed in as <span className="text-foreground">{user?.email}</span>
+          {plan && (
+            <span className="ml-3 rounded border border-border px-2 py-0.5 text-xs uppercase tracking-wide">
+              {plan.tier} · {plan.status}
+            </span>
+          )}
         </p>
 
         <div className="mt-6 grid gap-4 lg:grid-cols-3">
