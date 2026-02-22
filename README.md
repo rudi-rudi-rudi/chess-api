@@ -28,11 +28,12 @@ npm install
 npm run dev
 ```
 
-## Landing page (shadcn-style UI)
-A separate Next.js app lives in `web/`.
+## Landing page + docs + login + dashboard (shadcn-style UI)
+A separate Next.js app lives in `web/` and is wired to the API.
 
 ```bash
 cd web
+cp .env.example .env.local
 npm install
 npm run dev
 ```
