@@ -36,7 +36,7 @@ echo "3) Profile + plan"
 curl -fsS "$API_BASE_URL/me" -H "Authorization: Bearer $ACCESS_TOKEN" >/dev/null
 curl -fsS "$API_BASE_URL/me/plan" -H "Authorization: Bearer $ACCESS_TOKEN" >/dev/null
 
-echo "4) Create API key"
+echo "4) API key lifecycle (create/list/revoke)"
 KEY_JSON=$(curl -fsS -X POST "$API_BASE_URL/me/api-keys" \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H 'content-type: application/json' \
@@ -45,6 +45,14 @@ API_KEY=$(node -e "const x=JSON.parse(process.argv[1]);console.log(x.apiKey||'')
 if [[ -z "$API_KEY" ]]; then
   echo "❌ API key creation failed"
   echo "$KEY_JSON"
+  exit 1
+fi
+
+LIST_JSON=$(curl -fsS "$API_BASE_URL/me/api-keys" -H "Authorization: Bearer $ACCESS_TOKEN")
+KEY_ID=$(node -e "const x=JSON.parse(process.argv[1]); const i=(x.items||[]).find((k)=>k.keyPrefix===process.argv[2].slice(0,12)); console.log(i?.id||'')" "$LIST_JSON" "$API_KEY")
+if [[ -z "$KEY_ID" ]]; then
+  echo "❌ API key list missing created key"
+  echo "$LIST_JSON"
   exit 1
 fi
 
@@ -73,4 +81,7 @@ curl -fsS -X POST "$API_BASE_URL/games/$GAME_ID/resign" \
   -H 'content-type: application/json' \
   -d '{"color":"w"}' >/dev/null
 
-echo "✅ Staging verification passed"
+curl -fsS -X DELETE "$API_BASE_URL/me/api-keys/$KEY_ID" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" >/dev/null
+
+echo "✅ Staging verification passed (auth + api key lifecycle + game flow)"

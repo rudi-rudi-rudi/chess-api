@@ -54,6 +54,12 @@ Ship a production-ready SaaS chess API where users can sign in, create API keys,
 - [x] staging verification script
 
 ### 6) QA checklist (before STG signoff)
+Blocked pending staging credentials/env:
+- `API_BASE_URL`
+- `GOOGLE_ID_TOKEN`
+- `STRIPE_TEST_PRICE_ID` (or configured `STRIPE_PRICE_PRO` on staging)
+- `STRIPE_WEBHOOK_SECRET` + Stripe CLI/event source access
+
 - [ ] Google login works
 - [ ] API key lifecycle works
 - [ ] Game flow works (create->move->ai->resign)
