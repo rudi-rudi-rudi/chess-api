@@ -49,7 +49,7 @@ Ship a production-ready SaaS chess API where users can sign in, create API keys,
 ### 5) Ops + deployment
 - [x] docker-compose for local Postgres + app
 - [x] env validation at boot
-- [ ] CI workflow (build + test)
+- [x] CI workflow (build + test)
 - [ ] Vercel deployment files/config
 - [ ] staging verification script
 
