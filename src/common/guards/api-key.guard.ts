@@ -6,6 +6,10 @@ import { randomId, sha256 } from '../../config/crypto.js';
 
 const rpmBuckets = new Map<string, { start: number; count: number }>();
 
+export function resetApiKeyRateLimitBuckets() {
+  rpmBuckets.clear();
+}
+
 @Injectable()
 export class ApiKeyGuard implements CanActivate {
   constructor(private readonly dbs: DatabaseService) {}

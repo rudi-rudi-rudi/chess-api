@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ApiKeyGuard } from '../src/common/guards/api-key.guard.js';
+import { ApiKeyGuard, resetApiKeyRateLimitBuckets } from '../src/common/guards/api-key.guard.js';
 
 function makeContext(key: string) {
   const req: any = { headers: { 'x-api-key': key } };
@@ -23,7 +23,7 @@ function makeDbMock(opts?: { tier?: 'free' | 'pro'; monthly?: number; apiId?: st
       from: () => ({
         where: () => ({
           limit: async () => {
-            selectCall += 1;
+            selectCall = (selectCall % 3) + 1;
             if (selectCall === 1) return [{ id: state.apiId, userId: state.userId }]; // api_keys
             if (selectCall === 2) return [{ tier: state.tier }]; // plans
             if (selectCall === 3) return state.monthly > 0 ? [{ id: 'm1', requestCount: state.monthly }] : []; // usage
@@ -40,6 +40,7 @@ function makeDbMock(opts?: { tier?: 'free' | 'pro'; monthly?: number; apiId?: st
 }
 
 test('api key guard allows request and sets apiUserId', async () => {
+  resetApiKeyRateLimitBuckets();
   const mock = makeDbMock({ monthly: 0, apiId: 'k-allow' });
   const guard = new ApiKeyGuard(mock as any);
   const context = makeContext('chess_key_123');
@@ -49,8 +50,27 @@ test('api key guard allows request and sets apiUserId', async () => {
 });
 
 test('api key guard enforces free monthly quota', async () => {
+  resetApiKeyRateLimitBuckets();
   const mock = makeDbMock({ tier: 'free', monthly: 10000, apiId: 'k-monthly' });
   const guard = new ApiKeyGuard(mock as any);
   const context = makeContext('chess_key_abc');
   await assert.rejects(() => guard.canActivate(context));
+});
+
+test('api key RPM limiting is isolated per key (not global)', async () => {
+  resetApiKeyRateLimitBuckets();
+
+  const mockA = makeDbMock({ tier: 'free', monthly: 0, apiId: 'key-A' });
+  const guardA = new ApiKeyGuard(mockA as any);
+
+  for (let i = 0; i < 30; i++) {
+    const ok = await guardA.canActivate(makeContext('chess_key_A'));
+    assert.equal(ok, true);
+  }
+  await assert.rejects(() => guardA.canActivate(makeContext('chess_key_A')));
+
+  const mockB = makeDbMock({ tier: 'free', monthly: 0, apiId: 'key-B' });
+  const guardB = new ApiKeyGuard(mockB as any);
+  const okB = await guardB.canActivate(makeContext('chess_key_B'));
+  assert.equal(okB, true);
 });
