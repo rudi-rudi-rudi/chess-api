@@ -114,3 +114,33 @@ curl -s -X POST http://localhost:3000/billing/checkout-session \
   -d '{}'
 ```
 
+## Error code catalog
+All API errors use a consistent shape:
+
+```json
+{
+  "error": {
+    "statusCode": 400,
+    "code": "Bad Request",
+    "message": "Human-readable message"
+  },
+  "path": "/games",
+  "timestamp": "2026-02-22T22:00:00.000Z"
+}
+```
+
+Common errors:
+- `401 Unauthorized`
+  - Missing/invalid bearer session (`/me`, `/billing/*`)
+  - Missing/invalid `x-api-key` (`/games*`)
+- `404 Not Found`
+  - Game or player not found / not owned by caller
+- `429 Too Many Requests`
+  - API key RPM exceeded for current plan
+  - Monthly request quota exceeded for current plan
+- `400 Bad Request`
+  - Validation failures (DTO constraints)
+  - Missing billing config (e.g. Stripe price)
+- `500 Internal Server Error`
+  - Unhandled server-side failure
+

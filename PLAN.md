@@ -44,7 +44,7 @@ Ship a production-ready SaaS chess API where users can sign in, create API keys,
 - [x] “Get key in 60 seconds” flow docs
 - [x] Copy-paste SDK-style snippets (JS/TS + curl)
 - [x] Plan limits docs + upgrade path
-- [ ] Error code catalog
+- [x] Error code catalog
 
 ### 5) Ops + deployment
 - [ ] docker-compose for local Postgres + app
