@@ -95,7 +95,7 @@ app.post('/games/:id/ai-move', async (req, reply) => {
   const game = getGame(id);
   if (!game) return reply.code(404).send({ error: 'Game not found' });
 
-  const result = aiMove(game);
+  const result = await aiMove(game);
   if ('error' in result) return reply.code(422).send(result);
 
   return { move: result.move, state: state(game) };

@@ -56,8 +56,10 @@ or
 { "san": "Nf3" }
 ```
 
-### Engine move (uses chess-ai-kong)
+### Engine move (uses Stockfish, fallback to chess-ai-kong)
 `POST /games/:id/ai-move`
+
+> For best strength install Stockfish on host (`brew install stockfish` on macOS).
 
 ### Resign
 `POST /games/:id/resign`
