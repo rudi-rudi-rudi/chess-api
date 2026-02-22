@@ -22,8 +22,17 @@ GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
 PORT=3000
 ```
 
-## Run
+## Run API
 ```bash
+npm install
+npm run dev
+```
+
+## Landing page (shadcn-style UI)
+A separate Next.js app lives in `web/`.
+
+```bash
+cd web
 npm install
 npm run dev
 ```
