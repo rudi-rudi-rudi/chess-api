@@ -17,7 +17,7 @@ Ship a production-ready SaaS chess API where users can sign in, create API keys,
 ## Remaining (must finish)
 
 ### 1) Billing + Entitlements (Stripe)
-- [ ] Stripe customer creation on first paid action
+- [x] Stripe customer creation on first paid action
 - [ ] Checkout session endpoint
 - [ ] Billing portal endpoint
 - [ ] Webhook handler (subscription created/updated/canceled)
