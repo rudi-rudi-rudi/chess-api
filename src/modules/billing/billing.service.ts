@@ -89,4 +89,19 @@ export class BillingService {
       url: session.url,
     };
   }
+
+  async createBillingPortalSession(input: { userId: string; email: string; name?: string }) {
+    const stripe = this.getStripeClient();
+    const appUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const customerId = await this.ensureStripeCustomer(input.userId, input.email, input.name);
+
+    const session = await stripe.billingPortal.sessions.create({
+      customer: customerId,
+      return_url: `${appUrl}/dashboard?billing=portal`,
+    });
+
+    return {
+      url: session.url,
+    };
+  }
 }

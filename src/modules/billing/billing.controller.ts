@@ -17,4 +17,13 @@ export class BillingController {
       priceId: body.priceId,
     });
   }
+
+  @Post('portal-session')
+  createPortalSession(@Req() req: any) {
+    return this.billing.createBillingPortalSession({
+      userId: req.user.id,
+      email: req.user.email,
+      name: req.user.name,
+    });
+  }
 }

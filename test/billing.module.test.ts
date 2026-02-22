@@ -87,3 +87,19 @@ test('billing service rejects checkout without price configuration', async () =>
 
   process.env.STRIPE_PRICE_PRO = prevPrice;
 });
+
+test('billing service creates portal session', async () => {
+  const mock = makeDbMock({ stripeCustomerId: 'cus_existing', tier: 'pro', status: 'active' });
+  const billing = new BillingService(mock as any);
+
+  (billing as any).stripe = {
+    billingPortal: {
+      sessions: {
+        create: async () => ({ url: 'https://billing.stripe.test/portal' }),
+      },
+    },
+  };
+
+  const out = await billing.createBillingPortalSession({ userId: 'u1', email: 'u1@example.com' });
+  assert.ok(out.url.includes('billing.stripe.test'));
+});
