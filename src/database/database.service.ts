@@ -52,6 +52,14 @@ export class DatabaseService implements OnModuleInit {
         updated_at timestamptz not null default now()
       );`;
     await this.client`
+      create table if not exists api_usage_monthly (
+        id text primary key,
+        user_id text not null references users(id) on delete cascade,
+        month_key text not null,
+        request_count integer not null default 0,
+        updated_at timestamptz not null default now()
+      );`;
+    await this.client`
       create table if not exists games (
         id text primary key,
         user_id text not null references users(id) on delete cascade,

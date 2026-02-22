@@ -22,9 +22,9 @@ Ship a production-ready SaaS chess API where users can sign in, create API keys,
 - [x] Billing portal endpoint
 - [x] Webhook handler (subscription created/updated/canceled)
 - [x] Persist plan tier/status in `plans`
-- [ ] Enforce plan limits:
-  - [ ] free: low RPM + low monthly requests + key cap
-  - [ ] pro: higher quotas
+- [x] Enforce plan limits:
+  - [x] free: low RPM + low monthly requests + key cap
+  - [x] pro: higher quotas
 
 ### 2) Production API hardening
 - [ ] Centralized exception filter + error shape
