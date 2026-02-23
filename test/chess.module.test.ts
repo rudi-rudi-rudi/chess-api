@@ -124,3 +124,12 @@ test('chess service deletes owned player', async () => {
   const listed: any = await svc.listPlayers('u1', { page: 1, limit: 20 });
   assert.equal(listed.items.length, 0);
 });
+
+test('chess service rejects assigning missing player to game', async () => {
+  const gameState = createState({ mode: 'pvp' });
+  const row = { id: 'g1', userId: 'u1', ...serialize(gameState) };
+  const mock = makeDbMock(row);
+
+  const svc = new ChessService(mock as any);
+  await assert.rejects(() => svc.assignPlayerToGame('u1', 'g1', { playerId: 'missing-player', color: 'w' }));
+});
