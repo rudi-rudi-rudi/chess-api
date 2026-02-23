@@ -49,3 +49,28 @@ test('request logging middleware keeps incoming x-request-id', () => {
   assert.equal(headers['x-request-id'], 'req_incoming_12345');
   assert.equal(typeof listeners.finish, 'function');
 });
+
+test('request logging middleware generates request id when missing/invalid', () => {
+  const middleware = new RequestLoggingMiddleware();
+
+  const headers: Record<string, string> = {};
+  const req: any = {
+    headers: { 'x-request-id': 'abc' },
+    method: 'GET',
+    url: '/health',
+  };
+  const res: any = {
+    statusCode: 200,
+    setHeader: (k: string, v: string) => {
+      headers[k] = v;
+    },
+    on: () => undefined,
+  };
+
+  middleware.use(req, res, () => undefined);
+
+  assert.equal(typeof req.requestId, 'string');
+  assert.ok(req.requestId.length > 10);
+  assert.equal(headers['x-request-id'], req.requestId);
+  assert.notEqual(req.requestId, 'abc');
+});
