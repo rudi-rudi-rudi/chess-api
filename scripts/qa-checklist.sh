@@ -3,29 +3,72 @@ set -euo pipefail
 
 API_BASE_URL="${API_BASE_URL:-}"
 GOOGLE_ID_TOKEN="${GOOGLE_ID_TOKEN:-}"
-STRIPE_TEST_PRICE_ID="${STRIPE_TEST_PRICE_ID:-}"
+ACCESS_TOKEN="${ACCESS_TOKEN:-}"
 
-if [[ -z "$API_BASE_URL" || -z "$GOOGLE_ID_TOKEN" ]]; then
-  echo "Usage: API_BASE_URL=... GOOGLE_ID_TOKEN=... [STRIPE_TEST_PRICE_ID=price_xxx] bash scripts/qa-checklist.sh"
+if [[ -z "$API_BASE_URL" ]]; then
+  echo "❌ Missing API_BASE_URL"
   exit 1
 fi
 
-echo "== QA checklist run =="
-API_BASE_URL="$API_BASE_URL" GOOGLE_ID_TOKEN="$GOOGLE_ID_TOKEN" STRIPE_TEST_PRICE_ID="$STRIPE_TEST_PRICE_ID" bash scripts/staging-verify.sh
+echo "== QA Checklist against $API_BASE_URL =="
 
-echo
-printf "[x] Google login works\n"
-printf "[x] API key lifecycle works\n"
-printf "[x] Game flow works (create->move->ai->resign)\n"
-printf "[x] Clock timeout works (covered by timed game flow assertions)\n"
-printf "[x] Free-tier limits enforced (covered by automated tests)\n"
+check() {
+  local name="$1"
+  shift
+  if "$@" >/dev/null 2>&1; then
+    echo "✅ $name"
+  else
+    echo "❌ $name"
+  fi
+}
 
-if [[ -n "$STRIPE_TEST_PRICE_ID" ]]; then
-  printf "[x] Upgrade to pro updates limits (billing endpoints verified)\n"
-  printf "[x] Stripe webhook updates entitlements (requires Stripe webhook trigger in staging)\n"
-else
-  printf "[ ] Upgrade to pro updates limits (set STRIPE_TEST_PRICE_ID to verify)\n"
-  printf "[ ] Stripe webhook updates entitlements (requires Stripe webhook trigger in staging)\n"
+check "Health endpoint" curl -fsS "$API_BASE_URL/"
+
+if [[ -z "$ACCESS_TOKEN" && -n "$GOOGLE_ID_TOKEN" ]]; then
+  LOGIN_JSON=$(curl -fsS -X POST "$API_BASE_URL/auth/google" -H 'content-type: application/json' -d "{\"idToken\":\"$GOOGLE_ID_TOKEN\"}")
+  ACCESS_TOKEN=$(node -e "const x=JSON.parse(process.argv[1]); console.log(x.accessToken || '')" "$LOGIN_JSON")
 fi
 
-printf "[x] Docs examples execute successfully (staging verify script path)\n"
+if [[ -z "$ACCESS_TOKEN" ]]; then
+  echo "⚠️  Skipping auth-dependent checks (provide ACCESS_TOKEN or GOOGLE_ID_TOKEN)."
+  exit 0
+fi
+
+check "Google login/session works" curl -fsS "$API_BASE_URL/me" -H "Authorization: Bearer $ACCESS_TOKEN"
+
+KEY_JSON=$(curl -fsS -X POST "$API_BASE_URL/me/api-keys" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H 'content-type: application/json' \
+  -d '{"name":"qa-checklist"}')
+API_KEY=$(node -e "const x=JSON.parse(process.argv[1]); console.log(x.apiKey || '')" "$KEY_JSON")
+
+if [[ -z "$API_KEY" ]]; then
+  echo "❌ API key lifecycle works"
+  exit 1
+fi
+
+echo "✅ API key lifecycle works"
+
+GAME_JSON=$(curl -fsS -X POST "$API_BASE_URL/games" \
+  -H "x-api-key: $API_KEY" \
+  -H 'content-type: application/json' \
+  -d '{"mode":"pve","aiColor":"b","timeControl":{"initialSeconds":30,"incrementSeconds":1}}')
+GAME_ID=$(node -e "const x=JSON.parse(process.argv[1]); console.log(x.id || '')" "$GAME_JSON")
+
+if [[ -z "$GAME_ID" ]]; then
+  echo "❌ Game flow works"
+  exit 1
+fi
+
+curl -fsS -X POST "$API_BASE_URL/games/$GAME_ID/moves" \
+  -H "x-api-key: $API_KEY" \
+  -H 'content-type: application/json' \
+  -d '{"from":"e2","to":"e4"}' >/dev/null
+curl -fsS -X POST "$API_BASE_URL/games/$GAME_ID/ai-move" -H "x-api-key: $API_KEY" >/dev/null
+curl -fsS -X POST "$API_BASE_URL/games/$GAME_ID/resign" \
+  -H "x-api-key: $API_KEY" \
+  -H 'content-type: application/json' \
+  -d '{"color":"w"}' >/dev/null
+
+echo "✅ Game flow works (create->move->ai->resign)"
+echo "ℹ️  Clock timeout / upgrade-to-pro / webhook checks require staged env + waiting windows."

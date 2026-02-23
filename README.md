@@ -39,6 +39,14 @@ GOOGLE_ID_TOKEN=<google_id_token> \
 bash scripts/staging-verify.sh
 ```
 
+## QA checklist runner (staging)
+```bash
+API_BASE_URL=https://stg-api.example.com \
+GOOGLE_ID_TOKEN=<google_id_token> \
+bash scripts/qa-checklist.sh
+```
+(Or provide `ACCESS_TOKEN` directly to skip login bootstrap.)
+
 Optional billing checks:
 ```bash
 API_BASE_URL=https://stg-api.example.com \
