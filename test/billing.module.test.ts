@@ -191,3 +191,28 @@ test('billing service validates webhook signature when secret is configured', as
 
   process.env.STRIPE_WEBHOOK_SECRET = prevSecret;
 });
+
+test('billing service does not require signature when webhook secret is set but signature missing', async () => {
+  const prevSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  process.env.STRIPE_WEBHOOK_SECRET = 'whsec_test_123';
+
+  const mock = makeDbMock({ stripeCustomerId: 'cus_existing', tier: 'free', status: 'active' });
+  const billing = new BillingService(mock as any);
+
+  let called = false;
+  (billing as any).stripe = {
+    webhooks: {
+      constructEvent: () => {
+        called = true;
+        return { type: 'invoice.paid', data: { object: { id: 'in_123' } } };
+      },
+    },
+  };
+
+  const out = await billing.handleWebhook({ type: 'invoice.paid', data: { object: { id: 'in_123' } } });
+  assert.equal(out.received, true);
+  assert.equal(called, false);
+  assert.equal(mock.calls.updated, null);
+
+  process.env.STRIPE_WEBHOOK_SECRET = prevSecret;
+});
