@@ -49,3 +49,24 @@ test('http exception filter shapes unknown exception as 500', () => {
   assert.equal((payload.body as any).error.message, 'Internal server error');
   assert.equal((payload.body as any).path, '/games/abc');
 });
+
+test('http exception filter joins validation message arrays', () => {
+  const filter = new HttpExceptionFilter();
+  const { host, payload } = makeHost('/games');
+
+  filter.catch(
+    new BadRequestException({
+      message: ['mode must be one of: pvp, pve', 'timeControl.initialSeconds must be a positive number'],
+      error: 'Bad Request',
+      statusCode: 400,
+    }),
+    host,
+  );
+
+  assert.equal(payload.statusCode, 400);
+  assert.equal(
+    (payload.body as any).error.message,
+    'mode must be one of: pvp, pve, timeControl.initialSeconds must be a positive number',
+  );
+  assert.equal((payload.body as any).error.code, 'Bad Request');
+});
