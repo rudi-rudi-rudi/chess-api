@@ -3,6 +3,7 @@ set -euo pipefail
 
 API_BASE_URL="${API_BASE_URL:-}"
 GOOGLE_ID_TOKEN="${GOOGLE_ID_TOKEN:-}"
+STRIPE_TEST_PRICE_ID="${STRIPE_TEST_PRICE_ID:-}"
 
 if [[ -z "$API_BASE_URL" ]]; then
   echo "❌ Missing API_BASE_URL"
@@ -84,4 +85,27 @@ curl -fsS -X POST "$API_BASE_URL/games/$GAME_ID/resign" \
 curl -fsS -X DELETE "$API_BASE_URL/me/api-keys/$KEY_ID" \
   -H "Authorization: Bearer $ACCESS_TOKEN" >/dev/null
 
-echo "✅ Staging verification passed (auth + api key lifecycle + game flow)"
+if [[ -n "$STRIPE_TEST_PRICE_ID" ]]; then
+  echo "6) Billing endpoints"
+  CHECKOUT_JSON=$(curl -fsS -X POST "$API_BASE_URL/billing/checkout-session" \
+    -H "Authorization: Bearer $ACCESS_TOKEN" \
+    -H 'content-type: application/json' \
+    -d "{\"priceId\":\"$STRIPE_TEST_PRICE_ID\"}")
+  CHECKOUT_URL=$(node -e "const x=JSON.parse(process.argv[1]);console.log(x.url||'')" "$CHECKOUT_JSON")
+  if [[ -z "$CHECKOUT_URL" ]]; then
+    echo "❌ Billing checkout session failed"
+    echo "$CHECKOUT_JSON"
+    exit 1
+  fi
+
+  PORTAL_JSON=$(curl -fsS -X POST "$API_BASE_URL/billing/portal-session" \
+    -H "Authorization: Bearer $ACCESS_TOKEN")
+  PORTAL_URL=$(node -e "const x=JSON.parse(process.argv[1]);console.log(x.url||'')" "$PORTAL_JSON")
+  if [[ -z "$PORTAL_URL" ]]; then
+    echo "❌ Billing portal session failed"
+    echo "$PORTAL_JSON"
+    exit 1
+  fi
+fi
+
+echo "✅ Staging verification passed (auth + api key lifecycle + game flow${STRIPE_TEST_PRICE_ID:+ + billing endpoints})"

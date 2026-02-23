@@ -39,6 +39,14 @@ GOOGLE_ID_TOKEN=<google_id_token> \
 bash scripts/staging-verify.sh
 ```
 
+Optional billing checks:
+```bash
+API_BASE_URL=https://stg-api.example.com \
+GOOGLE_ID_TOKEN=<google_id_token> \
+STRIPE_TEST_PRICE_ID=price_xxx \
+bash scripts/staging-verify.sh
+```
+
 ## Landing page + docs + login + dashboard (shadcn-style UI)
 A separate Next.js app lives in `web/` and is wired to the API.
 
