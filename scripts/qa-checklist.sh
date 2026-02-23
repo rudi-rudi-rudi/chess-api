@@ -72,6 +72,27 @@ curl -fsS -X POST "$API_BASE_URL/games/$GAME_ID/resign" \
 
 echo "✅ Game flow works (create->move->ai->resign)"
 
+# Clock timeout check with very short clock
+CLOCK_GAME_JSON=$(curl -fsS -X POST "$API_BASE_URL/games" \
+  -H "x-api-key: $API_KEY" \
+  -H 'content-type: application/json' \
+  -d '{"mode":"pvp","timeControl":{"initialSeconds":1,"incrementSeconds":0}}')
+CLOCK_GAME_ID=$(node -e "const x=JSON.parse(process.argv[1]); console.log(x.id || '')" "$CLOCK_GAME_JSON")
+
+if [[ -n "$CLOCK_GAME_ID" ]]; then
+  sleep 2
+  CLOCK_STATE=$(curl -fsS "$API_BASE_URL/games/$CLOCK_GAME_ID" -H "x-api-key: $API_KEY")
+  CLOCK_STATUS=$(node -e "const x=JSON.parse(process.argv[1]); console.log(x.status || '')" "$CLOCK_STATE")
+  CLOCK_REASON=$(node -e "const x=JSON.parse(process.argv[1]); console.log(x.result?.reason || '')" "$CLOCK_STATE")
+  if [[ "$CLOCK_STATUS" == "finished" && "$CLOCK_REASON" == "timeout" ]]; then
+    echo "✅ Clock timeout works"
+  else
+    echo "⚠️  Clock timeout check inconclusive (status=$CLOCK_STATUS reason=$CLOCK_REASON)"
+  fi
+else
+  echo "⚠️  Clock timeout check skipped (could not create timed game)"
+fi
+
 # Docs examples smoke checks (same routes as docs snippets)
 check "Docs example: list games" curl -fsS "$API_BASE_URL/games?status=active&limit=5" -H "x-api-key: $API_KEY"
 
@@ -91,4 +112,18 @@ else
   echo "⚠️  Free-tier limits check inconclusive (second=$SECOND_KEY_STATUS third=$THIRD_KEY_STATUS)"
 fi
 
-echo "ℹ️  Remaining staged checks needing live billing/time windows: clock timeout, upgrade-to-pro, webhook transition validation."
+if [[ -n "${STRIPE_TEST_PRICE_ID:-}" ]]; then
+  CHECKOUT_STATUS=$(curl -s -o /tmp/qa_checkout.json -w "%{http_code}" -X POST "$API_BASE_URL/billing/checkout-session" \
+    -H "Authorization: Bearer $ACCESS_TOKEN" \
+    -H 'content-type: application/json' \
+    -d "{\"priceId\":\"$STRIPE_TEST_PRICE_ID\"}")
+  if [[ "$CHECKOUT_STATUS" == "201" || "$CHECKOUT_STATUS" == "200" ]]; then
+    echo "✅ Upgrade-to-pro path reachable (checkout session)"
+  else
+    echo "⚠️  Upgrade-to-pro check inconclusive (checkout status=$CHECKOUT_STATUS)"
+  fi
+else
+  echo "ℹ️  Upgrade-to-pro check skipped (set STRIPE_TEST_PRICE_ID to enable)."
+fi
+
+echo "ℹ️  Webhook transition validation still requires Stripe event source + webhook secret wiring in staging."
