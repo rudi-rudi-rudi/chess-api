@@ -56,7 +56,7 @@ Ship a production-ready SaaS chess API where users can sign in, create API keys,
 ### 6) QA checklist (before STG signoff)
 Blocked pending staging credentials/env:
 - `API_BASE_URL`
-- `GOOGLE_ID_TOKEN`
+- one of: `GOOGLE_ID_TOKEN` or `ACCESS_TOKEN`
 - `STRIPE_TEST_PRICE_ID` (optional for billing endpoint verification; or configured `STRIPE_PRICE_PRO` on staging)
 - `STRIPE_WEBHOOK_SECRET` + Stripe CLI/event source access
 

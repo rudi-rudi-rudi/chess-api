@@ -3,17 +3,19 @@ set -euo pipefail
 
 API_BASE_URL="${API_BASE_URL:-}"
 GOOGLE_ID_TOKEN="${GOOGLE_ID_TOKEN:-}"
+ACCESS_TOKEN="${ACCESS_TOKEN:-}"
 STRIPE_TEST_PRICE_ID="${STRIPE_TEST_PRICE_ID:-}"
 
 if [[ -z "$API_BASE_URL" ]]; then
   echo "❌ Missing API_BASE_URL"
   echo "Usage: API_BASE_URL=https://stg-api.example.com GOOGLE_ID_TOKEN=<token> bash scripts/staging-verify.sh"
+  echo "   or: API_BASE_URL=https://stg-api.example.com ACCESS_TOKEN=<session_token> bash scripts/staging-verify.sh"
   exit 1
 fi
 
-if [[ -z "$GOOGLE_ID_TOKEN" ]]; then
-  echo "❌ Missing GOOGLE_ID_TOKEN"
-  echo "Provide a valid Google ID token for staging account."
+if [[ -z "$GOOGLE_ID_TOKEN" && -z "$ACCESS_TOKEN" ]]; then
+  echo "❌ Missing auth input"
+  echo "Provide GOOGLE_ID_TOKEN (preferred) or ACCESS_TOKEN."
   exit 1
 fi
 
@@ -22,15 +24,19 @@ echo "== Staging verification: $API_BASE_URL =="
 echo "1) Health check"
 curl -fsS "$API_BASE_URL/" >/dev/null
 
-echo "2) Auth login"
-LOGIN_JSON=$(curl -fsS -X POST "$API_BASE_URL/auth/google" \
-  -H 'content-type: application/json' \
-  -d "{\"idToken\":\"$GOOGLE_ID_TOKEN\"}")
-ACCESS_TOKEN=$(node -e "const x=JSON.parse(process.argv[1]);console.log(x.accessToken||'')" "$LOGIN_JSON")
-if [[ -z "$ACCESS_TOKEN" ]]; then
-  echo "❌ Login failed: no access token"
-  echo "$LOGIN_JSON"
-  exit 1
+if [[ -n "$GOOGLE_ID_TOKEN" ]]; then
+  echo "2) Auth login"
+  LOGIN_JSON=$(curl -fsS -X POST "$API_BASE_URL/auth/google" \
+    -H 'content-type: application/json' \
+    -d "{\"idToken\":\"$GOOGLE_ID_TOKEN\"}")
+  ACCESS_TOKEN=$(node -e "const x=JSON.parse(process.argv[1]);console.log(x.accessToken||'')" "$LOGIN_JSON")
+  if [[ -z "$ACCESS_TOKEN" ]]; then
+    echo "❌ Login failed: no access token"
+    echo "$LOGIN_JSON"
+    exit 1
+  fi
+else
+  echo "2) Auth login skipped (ACCESS_TOKEN provided)"
 fi
 
 echo "3) Profile + plan"
