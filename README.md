@@ -52,14 +52,6 @@ Optional billing checks:
 API_BASE_URL=https://stg-api.example.com \
 GOOGLE_ID_TOKEN=<google_id_token> \
 STRIPE_TEST_PRICE_ID=price_xxx \
-bash scripts/staging-verify.sh
-```
-
-QA checklist helper:
-```bash
-API_BASE_URL=https://stg-api.example.com \
-GOOGLE_ID_TOKEN=<google_id_token> \
-STRIPE_TEST_PRICE_ID=price_xxx \
 bash scripts/qa-checklist.sh
 ```
 
@@ -183,4 +175,3 @@ Common errors:
   - Missing billing config (e.g. Stripe price)
 - `500 Internal Server Error`
   - Unhandled server-side failure
-
