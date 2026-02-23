@@ -146,3 +146,20 @@ test('billing service handles subscription deleted webhook and downgrades plan',
   assert.equal(mock.calls.updated.tier, 'free');
   assert.equal(mock.calls.updated.status, 'canceled');
 });
+
+test('billing service ignores unrelated webhook event types', async () => {
+  const mock = makeDbMock({ stripeCustomerId: 'cus_existing', tier: 'free', status: 'active' });
+  const billing = new BillingService(mock as any);
+
+  const event: any = {
+    type: 'invoice.paid',
+    data: {
+      object: { id: 'in_123' },
+    },
+  };
+
+  const out = await billing.handleWebhook(event);
+  assert.equal(out.received, true);
+  assert.equal(mock.calls.updated, null);
+  assert.equal(mock.calls.inserted, null);
+});
