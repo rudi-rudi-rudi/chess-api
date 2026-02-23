@@ -58,7 +58,7 @@ Blocked pending staging credentials/env:
 - `API_BASE_URL`
 - one of: `GOOGLE_ID_TOKEN` or `ACCESS_TOKEN`
 - `STRIPE_TEST_PRICE_ID` (optional for billing endpoint verification; or configured `STRIPE_PRICE_PRO` on staging)
-- `STRIPE_WEBHOOK_SECRET` + Stripe CLI/event source access
+- `STRIPE_WEBHOOK_SECRET` + `STRIPE_CUSTOMER_ID` + `USER_ID` (for webhook transition script)
 
 - [ ] Google login works
 - [ ] API key lifecycle works
@@ -66,7 +66,7 @@ Blocked pending staging credentials/env:
 - [ ] Clock timeout works
 - [ ] Free-tier limits enforced
 - [ ] Upgrade to pro updates limits
-- [ ] Stripe webhook updates entitlements
+- [ ] Stripe webhook updates entitlements (ready to verify via `scripts/staging-webhook-verify.sh`)
 - [ ] Docs examples execute successfully
 
 ## Work Rules

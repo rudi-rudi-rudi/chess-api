@@ -47,6 +47,17 @@ bash scripts/qa-checklist.sh
 ```
 (Or provide `ACCESS_TOKEN` directly to skip login bootstrap.)
 
+## Stripe webhook transition verifier (staging)
+Use this after you have a real staged user + Stripe customer id.
+
+```bash
+API_BASE_URL=https://stg-api.example.com \
+STRIPE_WEBHOOK_SECRET=whsec_xxx \
+STRIPE_CUSTOMER_ID=cus_xxx \
+USER_ID=<app_user_id> \
+bash scripts/staging-webhook-verify.sh
+```
+
 Optional billing checks:
 ```bash
 API_BASE_URL=https://stg-api.example.com \
