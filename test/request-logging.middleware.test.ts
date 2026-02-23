@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildRequestLogLine } from '../src/common/middleware/request-logging.middleware.js';
+import { buildRequestLogLine, RequestLoggingMiddleware } from '../src/common/middleware/request-logging.middleware.js';
 
 test('request log line includes requestId, route, status and duration', () => {
   const line = buildRequestLogLine({
@@ -17,4 +17,35 @@ test('request log line includes requestId, route, status and duration', () => {
 test('request log line has safe defaults', () => {
   const line = buildRequestLogLine({ requestId: 'req_456' });
   assert.equal(line, '[req_456] UNKNOWN / -> 0 0ms');
+});
+
+test('request logging middleware keeps incoming x-request-id', () => {
+  const middleware = new RequestLoggingMiddleware();
+
+  const headers: Record<string, string> = {};
+  const listeners: Record<string, () => void> = {};
+  const req: any = {
+    headers: { 'x-request-id': 'req_incoming_12345' },
+    method: 'GET',
+    url: '/health',
+  };
+  const res: any = {
+    statusCode: 200,
+    setHeader: (k: string, v: string) => {
+      headers[k] = v;
+    },
+    on: (event: string, cb: () => void) => {
+      listeners[event] = cb;
+    },
+  };
+
+  let called = false;
+  middleware.use(req, res, () => {
+    called = true;
+  });
+
+  assert.equal(called, true);
+  assert.equal(req.requestId, 'req_incoming_12345');
+  assert.equal(headers['x-request-id'], 'req_incoming_12345');
+  assert.equal(typeof listeners.finish, 'function');
 });
